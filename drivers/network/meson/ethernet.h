@@ -74,6 +74,7 @@
 #define TX_THRSH_SHFT               (14)
 #define FLUSHTXFIFO                 (1 << 20)            /* Flush Transmit FIFO. When this bit is set, the transmit FIFO controller logic is reset to its default values and thus all data in the Tx FIFO is lost/flushed. */
 #define STOREFORWARD                (1 << 21)            /* When this bit is set, transmission starts when a full frame resides in the MTL Transmit FIFO. When this bit is set, the TTC values specified in Register6[16:14] are ignored. */
+
 #define DIS_FRMFLUSH                (1 << 24)            /* Disable Flushing of Received Frames. When this bit is set, the RxDMA does not flush any frames due to the unavailability of receive descriptors/buffers as it does normally when this bit is reset. */
 
 /* DMA Missed Frame and Buffer Overflow Counter register definitions */
@@ -152,6 +153,17 @@
 #define DESC_TXCTRL_SIZE1MASK		(0x7FF)
 #define DESC_TXCTRL_SIZE1SHFT		(0)
 
+/* GMAC FLOW CTRL defines */
+#define GMAC_FLOW_CTRL_PT_MASK    0xffff0000    /* Pause Time Mask */
+#define GMAC_FLOW_CTRL_PT_SHIFT    16
+#define GMAC_FLOW_CTRL_UP    0x00000008    /* Unicast pause frame enable */
+#define GMAC_FLOW_CTRL_RFE    0x00000004    /* Rx Flow Control Enable */
+#define GMAC_FLOW_CTRL_TFE    0x00000002    /* Tx Flow Control Enable */
+#define GMAC_FLOW_CTRL_FCB_BPA    0x00000001    /* Flow Control Busy ... */
+
+
+
+
 struct eth_mac_regs {
     uint32_t conf;                                      /* 0x00 This is the operation mode register for the MAC. */
     uint32_t framefilt;                                 /* 0x04 Contains the frame filtering controls. */
@@ -162,7 +174,10 @@ struct eth_mac_regs {
     uint32_t flowcontrol;                               /* 0x18 Controls the generation of control frames. */
     uint32_t vlantag;                                   /* 0x1c Identifies IEEE 802.1Q VLAN type frames */
     uint32_t version;                                   /* 0x20 Identifies the version of the Core */
-    uint32_t reserved_1[5];
+    uint32_t debug;                                     /* 0x24 DEBUG register */
+    uint32_t wakeup_filter;                             /* 0x28 Wake-up frame filter */
+    uint32_t pmt;                                       /* 0x2C PMT control and Status */
+    uint32_t reserved_2[2];
     uint32_t intreg;                                    /* 0x38 Contains the interrupt status. */
     uint32_t intmask;                                   /* 0x3c Contains the masks for generating the interrupts. */
     uint32_t macaddr0hi;                                /* 0x40 Contains the higher 16 bits of the first MAC address */

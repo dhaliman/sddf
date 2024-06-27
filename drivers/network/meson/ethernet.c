@@ -14,6 +14,9 @@
 
 #include "ethernet.h"
 
+/* The same as Linux's default for pause frame timeout */
+const uint32_t pause_time = 0xffff;
+
 #define IRQ_CH 0
 #define TX_CH  1
 #define RX_CH  2
@@ -27,8 +30,8 @@ uintptr_t rx_active;
 uintptr_t tx_free;
 uintptr_t tx_active;
 
-#define RX_COUNT 256
-#define TX_COUNT 256
+#define RX_COUNT 4096
+#define TX_COUNT 2048
 #define MAX_COUNT MAX(RX_COUNT, TX_COUNT)
 
 struct descriptor {
@@ -134,6 +137,8 @@ static void rx_return(void)
             rx.descr_mdata[rx.tail] = buffer;
             update_ring_slot(&rx, rx.tail, DESC_RXSTS_OWNBYDMA, cntl, buffer.io_or_offset, 0);
             eth_dma->rxpolldemand = POLL_DATA;
+
+            rx.tail = (rx.tail + 1) % RX_COUNT;
         } else {
             buffer.len = (d->status & DESC_RXSTS_LENMSK) >> DESC_RXSTS_LENSHFT;
             int err = net_enqueue_active(&rx_queue, buffer);
@@ -223,6 +228,8 @@ static void handle_irq()
 
 static void eth_setup(void)
 {
+    uint32_t flow_ctrl;
+
     eth_mac = (void *)eth_regs;
     eth_dma = (void *)(eth_regs + DMA_REG_OFFSET);
     uint32_t l = eth_mac->macaddr0lo;
@@ -246,13 +253,23 @@ static void eth_setup(void)
     eth_mac->macaddr0hi = h;
 
     eth_dma->busmode = PRIORXTX_11 | ((DMA_PBL << TX_PBL_SHFT) & TX_PBL_MASK);
-    eth_dma->opmode = STOREFORWARD;
+    /*
+     * Operate in store-and-forward mode.
+     * Send pause frames when there's only 1k of buffers left,
+     * stop sending them when there are 2k buffers left.
+     * Continue DMA on 2nd frame while updating status on first
+     */
+    eth_dma->opmode = STOREFORWARD | EN_FLOWCTL | (0<<FLOWCTL_SHFT) | (0<DISFLOWCTL_SHFT) | TX_OPSCND;
     eth_mac->conf = FULLDPLXMODE;
 
     eth_dma->rxdesclistaddr = hw_ring_buffer_paddr;
     eth_dma->txdesclistaddr = hw_ring_buffer_paddr + (sizeof(struct descriptor) * RX_COUNT);
 
     eth_mac->framefilt |= PMSCUOUS_MODE;
+
+    flow_ctrl = GMAC_FLOW_CTRL_UP|GMAC_FLOW_CTRL_RFE|GMAC_FLOW_CTRL_TFE;
+    flow_ctrl |= (pause_time << GMAC_FLOW_CTRL_PT_SHIFT);
+    eth_mac->flowcontrol = flow_ctrl;
 }
 
 void init(void)
