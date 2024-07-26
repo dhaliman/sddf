@@ -1,4 +1,5 @@
-#include <microkit.h>
+// #include <microkit.h>
+#include <sddf/util/printf.h>
 
 /*
  * This source file is intended to be compiled with other code
@@ -10,25 +11,25 @@
 
 void _close(void)
 {
-    microkit_dbg_puts("NEWLIB ERROR: calling unimplemented _close()");
+    sddf_dprintf("NEWLIB ERROR: calling unimplemented _close()");
 }
 
 void _lseek(void)
 {
-    microkit_dbg_puts("NEWLIB ERROR: calling unimplemented _lseek()");
+    sddf_dprintf("NEWLIB ERROR: calling unimplemented _lseek()");
 }
 
 void _read(void)
 {
-    microkit_dbg_puts("NEWLIB ERROR: calling unimplemented _read()");
+    sddf_dprintf("NEWLIB ERROR: calling unimplemented _read()");
 }
 
 void _write(void)
 {
-    microkit_dbg_puts("NEWLIB ERROR: calling unimplemented _write()");
+    sddf_dprintf("NEWLIB ERROR: calling unimplemented _write()");
 }
 
 void _sbrk(void)
 {
-    microkit_dbg_puts("NEWLIB ERROR: calling unimplemented _sbrk()");
+    sddf_dprintf("NEWLIB ERROR: calling unimplemented _sbrk()");
 }
