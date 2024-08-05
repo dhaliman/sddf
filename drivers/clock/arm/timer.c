@@ -1,4 +1,4 @@
-#include "sys_timer.h"
+#include "timer.h"
 #include <stdint.h>
 #include <sddf/timer/protocol.h>
 #include <sddf/util/util.h>

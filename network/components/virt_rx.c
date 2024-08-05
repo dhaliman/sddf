@@ -1,4 +1,4 @@
-#include "sys_virt_rx.h"
+#include "virt_rx.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <sddf/network/queue.h>
