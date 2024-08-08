@@ -285,7 +285,9 @@ static void netif_status_callback(struct netif *netif)
 
 void init(void)
 {
-    serial_cli_queue_init_sys(microkit_name, NULL, NULL, NULL, &serial_tx_queue_handle, serial_tx_queue, serial_tx_data);
+    size_t serial_tx_data_size;
+    serial_cli_data_size(microkit_name, NULL, &serial_tx_data_size);
+    serial_queue_init(&serial_tx_queue_handle, serial_tx_queue, serial_tx_data_size, serial_tx_data);
     serial_putchar_init(SERIAL_TX_CH, &serial_tx_queue_handle);
 
     net_cli_queue_init_sys(microkit_name, &state.rx_queue, rx_free, rx_active, &state.tx_queue, tx_free, tx_active);

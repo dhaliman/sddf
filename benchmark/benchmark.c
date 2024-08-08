@@ -275,7 +275,9 @@ void notified(microkit_channel ch)
 
 void init(void)
 {
-    serial_cli_queue_init_sys(microkit_name, NULL, NULL, NULL, &serial_tx_queue_handle, serial_tx_queue, serial_tx_data);
+    size_t serial_tx_data_size;
+    serial_cli_data_size(microkit_name, NULL, &serial_tx_data_size);
+    serial_queue_init(&serial_tx_queue_handle, serial_tx_queue, serial_tx_data_size, serial_tx_data);
     serial_putchar_init(SERIAL_TX_CH, &serial_tx_queue_handle);
 #ifdef MICROKIT_CONFIG_benchmark
     sel4bench_init();

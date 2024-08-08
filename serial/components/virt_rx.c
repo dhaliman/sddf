@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <microkit.h>
 #include <sddf/serial/queue.h>
+#include <sddf/serial/util.h>
 #include <sddf/util/string.h>
 #include <sddf/util/printf.h>
 #include <serial_config.h>
@@ -128,8 +129,15 @@ void rx_return(void)
 
 void init(void)
 {
+    /* Set up the driver queue */
     serial_queue_init(&rx_queue_handle_drv, rx_queue_drv, SERIAL_RX_DATA_REGION_SIZE_DRIV, rx_data_drv);
-    serial_virt_queue_init_sys(microkit_name, rx_queue_handle_cli, rx_queue_cli0, rx_data_cli0);
+
+    /* Set up the client queues */
+    serial_info_t clients[SERIAL_NUM_CLIENTS] = {0};
+    serial_virt_queue_info(microkit_name, rx_queue_cli0, rx_data_cli0, clients);
+    for (int i = 0; i < SERIAL_NUM_CLIENTS; i++) {
+        serial_queue_init(&rx_queue_handle_cli[i], clients[i].queue, clients[i].data_size, clients[i].data);
+    }
 }
 
 void notified(microkit_channel ch)

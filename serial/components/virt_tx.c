@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <microkit.h>
 #include <sddf/serial/queue.h>
+#include <sddf/serial/util.h>
 #include <sddf/util/printf.h>
 #include <serial_config.h>
 
@@ -203,8 +204,15 @@ void tx_provide(microkit_channel ch)
 
 void init(void)
 {
+    /* Set up the driver queue */
     serial_queue_init(&tx_queue_handle_drv, tx_queue_drv, SERIAL_TX_DATA_REGION_SIZE_DRIV, tx_data_drv);
-    serial_virt_queue_init_sys(microkit_name, tx_queue_handle_cli, tx_queue_cli0, tx_data_cli0);
+
+    /* Set up the client queues */
+    serial_info_t clients[SERIAL_NUM_CLIENTS] = {0};
+    serial_virt_queue_info(microkit_name, tx_queue_cli0, tx_data_cli0, clients);
+    for (int i = 0; i < SERIAL_NUM_CLIENTS; i++) {
+        serial_queue_init(&tx_queue_handle_cli[i], clients[i].queue, clients[i].data_size, clients[i].data);
+    }
 
 #if !SERIAL_TX_ONLY
     /* Print a deterministic string to allow console input to begin */

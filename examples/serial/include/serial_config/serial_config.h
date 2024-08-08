@@ -8,6 +8,7 @@
 #include <microkit.h>
 #include <sddf/util/string.h>
 #include <sddf/serial/queue.h>
+#include <sddf/serial/util.h>
 #include <stdint.h>
 
 #define SERIAL_NUM_CLIENTS 2
@@ -59,30 +60,32 @@ _Static_assert(SERIAL_TX_DATA_REGION_SIZE_DRIV > SERIAL_MAX_CLIENT_TX_DATA_SIZE,
 _Static_assert(SERIAL_MAX_DATA_SIZE < UINT32_MAX,
                "Data regions must be smaller than UINT32 max to correctly use queue data structure.");
 
-static inline void serial_cli_queue_init_sys(char *pd_name, serial_queue_handle_t *rx_queue_handle,
-                                             serial_queue_t *rx_queue,
-                                             char *rx_data, serial_queue_handle_t *tx_queue_handle, serial_queue_t *tx_queue, char *tx_data)
+static inline void serial_cli_data_size(char *pd_name, size_t *rx_data_size, size_t* tx_data_size)
 {
     if (!sddf_strcmp(pd_name, SERIAL_CLI0_NAME)) {
-        serial_queue_init(rx_queue_handle, rx_queue, SERIAL_RX_DATA_REGION_SIZE_CLI0, rx_data);
-        serial_queue_init(tx_queue_handle, tx_queue, SERIAL_TX_DATA_REGION_SIZE_CLI0, tx_data);
+        *rx_data_size = SERIAL_RX_DATA_REGION_SIZE_CLI0;
+        *tx_data_size = SERIAL_TX_DATA_REGION_SIZE_CLI0;
     } else if (!sddf_strcmp(pd_name, SERIAL_CLI1_NAME)) {
-        serial_queue_init(rx_queue_handle, rx_queue, SERIAL_RX_DATA_REGION_SIZE_CLI1, rx_data);
-        serial_queue_init(tx_queue_handle, tx_queue, SERIAL_TX_DATA_REGION_SIZE_CLI1, tx_data);
+        *rx_data_size = SERIAL_RX_DATA_REGION_SIZE_CLI1;
+        *tx_data_size = SERIAL_TX_DATA_REGION_SIZE_CLI1;
     }
 }
 
-static inline void serial_virt_queue_init_sys(char *pd_name, serial_queue_handle_t *cli_queue_handle,
-                                              serial_queue_t *cli_queue, char *cli_data)
+
+
+static inline void serial_virt_queue_info(char *pd_name, serial_queue_t *cli0_queue, char *cli0_data,
+                                          serial_info_t ret[SERIAL_NUM_CLIENTS])
 {
     if (!sddf_strcmp(pd_name, SERIAL_VIRT_RX_NAME)) {
-        serial_queue_init(cli_queue_handle, cli_queue, SERIAL_RX_DATA_REGION_SIZE_CLI0, cli_data);
-        serial_queue_init(&cli_queue_handle[1], (serial_queue_t *)((uintptr_t)cli_queue + SERIAL_QUEUE_SIZE),
-                          SERIAL_RX_DATA_REGION_SIZE_CLI1, cli_data + SERIAL_RX_DATA_REGION_SIZE_CLI0);
+        ret[0] = (serial_info_t) {.queue = cli0_queue, .data = cli0_data, .data_size = SERIAL_RX_DATA_REGION_SIZE_CLI0};
+        ret[1] = (serial_info_t) {.queue = (serial_queue_t *)((uintptr_t)cli0_queue + SERIAL_QUEUE_SIZE),
+                                        .data = cli0_data + SERIAL_RX_DATA_REGION_SIZE_CLI0,
+                                        .data_size = SERIAL_RX_DATA_REGION_SIZE_CLI1};
     } else if (!sddf_strcmp(pd_name, SERIAL_VIRT_TX_NAME)) {
-        serial_queue_init(cli_queue_handle, cli_queue, SERIAL_TX_DATA_REGION_SIZE_CLI0, cli_data);
-        serial_queue_init(&cli_queue_handle[1], (serial_queue_t *)((uintptr_t)cli_queue + SERIAL_QUEUE_SIZE),
-                          SERIAL_TX_DATA_REGION_SIZE_CLI1, cli_data + SERIAL_TX_DATA_REGION_SIZE_CLI0);
+        ret[0] = (serial_info_t) {.queue = cli0_queue, .data = cli0_data, .data_size = SERIAL_TX_DATA_REGION_SIZE_CLI0};
+        ret[1] = (serial_info_t) {.queue = (serial_queue_t *)((uintptr_t)cli0_queue + SERIAL_QUEUE_SIZE),
+                                .data = cli0_data + SERIAL_TX_DATA_REGION_SIZE_CLI0,
+                                .data_size = SERIAL_TX_DATA_REGION_SIZE_CLI1};
     }
 }
 
