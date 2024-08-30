@@ -432,10 +432,10 @@ static inline void i2c_load_tokens(volatile struct i2c_regs *regs)
         if (meson_token == MESON_I2C_TOKEN_DATA && i2c_ifState.data_direction == DATA_DIRECTION_WRITE) {
             // the + 1 is because tokens[request_data_offset] = MESON_I2C_TOKEN_DATA but we want to store the token the come after
             if (wdata_offset < 4) {
-                regs->wdata0 |= (tokens[request_data_offset + 1] << (wdata_offset *
+                regs->wdata0 |= ((uint32_t)tokens[request_data_offset + 1] << (wdata_offset *
                                                                      8));
             } else {
-                regs->wdata1 |= (tokens[request_data_offset + 1] << ((wdata_offset - 4) *
+                regs->wdata1 |= ((uint32_t)tokens[request_data_offset + 1] << ((wdata_offset - 4) *
                                                                      8));
             }
             // Since we grabbed the next token in the chain, increment offset
