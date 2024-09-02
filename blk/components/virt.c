@@ -34,7 +34,8 @@ blk_queue_handle_t drv_h;
 /* Client specific info */
 typedef struct client {
     blk_queue_handle_t queue_h;
-    microkit_channel ch;
+    microkit_channel queue_ch;
+    microkit_channel state_ch;
 } client_t;
 client_t clients[BLK_NUM_CLIENTS];
 
@@ -69,8 +70,6 @@ static void handle_driver_state();
 
 void init(void)
 {
-    while (!blk_storage_is_ready(blk_config_driver));
-
     // Initialise client queues
     for (int i = 0; i < BLK_NUM_CLIENTS; i++) {
         blk_req_queue_t *curr_req = blk_virt_cli_req_queue(blk_req_queue, i);
@@ -78,7 +77,8 @@ void init(void)
         uint32_t queue_size = blk_virt_cli_queue_size(i);
         blk_queue_init(&clients[i].queue_h, curr_req, curr_resp, queue_size);
 
-        clients[i].ch = CLI_CH_OFFSET + i;
+        clients[i].queue_ch = CLI_CH_BASE + (i * CLI_CH_STRIDE) + CLI_CH_BLK_QUEUE_IDX;
+        clients[i].state_ch = CLI_CH_BASE + (i * CLI_CH_STRIDE) + CLI_CH_BLK_STATE_IDX;
     }
 
     // Initialise driver queue
@@ -89,7 +89,7 @@ void init(void)
     fsmalloc_init(&fsmalloc, blk_data_driver, BLK_TRANSFER_SIZE, BLK_NUM_BUFFERS_DRIV, &fsmalloc_avail_bitarr,
                   fsmalloc_avail_bitarr_words, roundup_bits2words64(BLK_NUM_BUFFERS_DRIV));
 
-    handle_driver_state();
+    /* continued via ready notifications */
 }
 
 static void handle_driver_queue()
@@ -158,23 +158,23 @@ static void handle_driver_queue()
         }
 
         // Notify corresponding client
-        microkit_notify(clients[cli_data.cli_id].ch);
+        microkit_notify(clients[cli_data.cli_id].queue_ch);
     }
 }
 
 static void notify_clients_state()
 {
-    bool driver_ready = __atomic_load_n(&blk_config_driver->ready, __ATOMIC_ACQUIRE);
+    bool driver_ready = blk_storage_is_ready(blk_config_driver);
     for (int i = 0; i < BLK_NUM_CLIENTS; i++) {
         blk_storage_info_t *curr_blk_config = blk_virt_cli_config_info(blk_config, i);
 
-        __atomic_store_n(&curr_blk_config->ready, driver_ready, __ATOMIC_RELEASE);
+        blk_storage_notify_ready(curr_blk_config, clients[i].state_ch, driver_ready);
     }
 }
 
 static void handle_driver_state()
 {
-    bool driver_ready = __atomic_load_n(&blk_config_driver->ready, __ATOMIC_ACQUIRE);
+    bool driver_ready = blk_storage_is_ready(blk_config_driver);
 
     /* As per the documentation, if we receive a BLK_STATE_CH notification
        we must treat it as if the device went In -> Out -> In even if we only
@@ -295,9 +295,13 @@ static void handle_client(int cli_id)
 
 void notified(microkit_channel ch)
 {
+    if (ch == DRIVER_BLK_STATE_CH) {
+        handle_driver_state();
+        return;
+    }
 
     if (virt_status == VirtBringup) {
-        if (ch != DRIVER_CH) {
+        if (ch != DRIVER_BLK_QUEUE_CH) {
             /* ignore client requests */
             return;
         }
@@ -315,12 +319,12 @@ void notified(microkit_channel ch)
         return;
     }
 
-    if (ch == DRIVER_CH) {
+    if (ch == DRIVER_BLK_QUEUE_CH) {
         handle_driver_queue();
     } else {
         for (int i = 0; i < BLK_NUM_CLIENTS; i++) {
             handle_client(i);
         }
-        microkit_deferred_notify(DRIVER_CH);
+        microkit_deferred_notify(DRIVER_BLK_QUEUE_CH);
     }
 }

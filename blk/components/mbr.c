@@ -142,7 +142,7 @@ void request_mbr(void)
                           state.mbr_req_id);
     assert(!err);
 
-    microkit_deferred_notify(DRIVER_CH);
+    microkit_deferred_notify(DRIVER_BLK_QUEUE_CH);
 }
 
 bool policy_init(void)
