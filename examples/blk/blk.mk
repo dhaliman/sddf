@@ -55,7 +55,7 @@ CFLAGS := -mcpu=$(CPU) \
 		  -ffreestanding \
 		  -g3 \
 		  -O3 \
-		  -Wall -Wno-unused-function -Werror -Wno-unused-command-line-argument \
+		  -Wall -Wno-unused-function -Werror \
 		  -I$(BOARD_DIR)/include \
 		  -I$(SDDF)/include \
 		  -I$(CONFIGS_INCLUDE)

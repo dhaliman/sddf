@@ -12,7 +12,7 @@
 #include <sddf/util/fence.h>
 
 /* Size of a single block to be transferred */
-#define BLK_TRANSFER_SIZE 4096
+#define BLK_TRANSFER_SIZE 512
 /* Device serial number max string length */
 #define BLK_MAX_SERIAL_NUMBER 63
 
