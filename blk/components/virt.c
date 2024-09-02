@@ -328,3 +328,8 @@ void notified(microkit_channel ch)
         microkit_deferred_notify(DRIVER_BLK_QUEUE_CH);
     }
 }
+
+microkit_msginfo protected(microkit_channel ch, microkit_msginfo msginfo)
+{
+    return microkit_ppcall(DRIVER_BLK_STATE_CH, msginfo);
+}
