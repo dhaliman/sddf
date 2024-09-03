@@ -1,7 +1,7 @@
 {
-    "name": "meson_eth",
+    "name": "virtio_net",
     "compatible": [
-        "amlogic,meson-g12a-dwmac"
+        "virtio,mmio"
     ],
     "resources": {
         "device_regions": [
@@ -11,13 +11,13 @@
                 "cached": false,
                 "setvar_vaddr": "eth_regs",
                 "page_size": 4096,
-                "size": 65536
+                "size": 4096
             }
         ],
         "shared_regions": [],
         "irqs": [
             {
-                "channel_id": 1,
+                "channel_id": 0,
                 "dt_index": 0
             }
         ]

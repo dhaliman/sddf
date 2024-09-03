@@ -17,8 +17,8 @@
         "shared_regions": [],
         "irqs": [
             {
-                "name": "timer",
-                "channel_id": 0
+                "channel_id": 0,
+                "dt_index": 0
             }
         ]
     }

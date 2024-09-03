@@ -134,7 +134,8 @@ void init(void)
     net_queue_init(&state.tx_queue_drv, tx_free_drv, tx_active_drv, NET_TX_QUEUE_SIZE_DRIV);
     net_virt_queue_init_sys(microkit_name, state.tx_queue_clients, tx_free_cli0, tx_active_cli0);
 
-    net_mem_region_init_sys(microkit_name, state.buffer_region_vaddrs, buffer_data_region_cli0_vaddr);
+    stat.buffer_region_vaddrs[0] = buffer_data_region_cli0_vaddr;
+    stat.buffer_region_vaddrs[1] = buffer_data_region_cli1_vaddr;
 
     /* CDTODO: Can we make this system agnostic? */
     state.buffer_region_paddrs[0] = buffer_data_region_cli0_paddr;

@@ -1,0 +1,16 @@
+{
+    "name": "arm_timer",
+    "compatible": [
+        "arm,armv8-timer"
+    ],
+    "resources": {
+        "device_regions": [],
+        "shared_regions": [],
+        "irqs": [
+            {
+                "channel_id": 0,
+                "dt_index": 1
+            }
+        ]
+    }
+}

@@ -35,8 +35,8 @@
         ],
         "irqs": [
             {
-                "name": "uart",
-                "channel_id": 0
+                "channel_id": 0,
+                "dt_index": 0
             }
         ]
     }
