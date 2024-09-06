@@ -1,7 +1,7 @@
 {
-    "name": "virtio_net",
+    "name": "virtio_blk",
     "compatible": [
-        "virtio,mmio-net"
+        "virtio,mmio-blk"
     ],
     "resources": {
         "device_regions": [
@@ -9,7 +9,7 @@
                 "name": "regs",
                 "perms": "rw",
                 "cached": false,
-                "setvar_vaddr": "eth_regs",
+                "setvar_vaddr": "blk_regs",
                 "page_size": 4096,
                 "size": 4096
             }
@@ -23,3 +23,4 @@
         ]
     }
 }
+
