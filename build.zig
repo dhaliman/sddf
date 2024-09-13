@@ -32,6 +32,10 @@ const DriverClass = struct {
         ds3231,
         pn532,
     };
+
+    const Pcie = enum {
+        starfive,
+    };
 };
 
 const util_src = [_][]const u8{
@@ -182,6 +186,30 @@ fn addBlockDriver(
     });
     driver.addIncludePath(blk_config_include);
     driver.addIncludePath(b.path(b.fmt("drivers/blk/{s}/", .{ @tagName(class) })));
+    driver.addIncludePath(b.path("include"));
+    driver.linkLibrary(util);
+
+    return driver;
+}
+
+fn addPcieDriver(
+    b: *std.Build,
+    util: *std.Build.Step.Compile,
+    class: DriverClass.Pcie,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+) *std.Build.Step.Compile {
+    const driver = addPd(b, .{
+        .name = b.fmt("driver_pcie_{s}.elf", .{ @tagName(class) }),
+        .target = target,
+        .optimize = optimize,
+        .strip = false,
+    });
+    const source = b.fmt("drivers/pcie/{s}/pcie.c", .{ @tagName(class) });
+    driver.addCSourceFile(.{
+        .file = b.path(source),
+    });
+    driver.addIncludePath(b.path(b.fmt("drivers/pcie/{s}/", .{ @tagName(class) })));
     driver.addIncludePath(b.path("include"));
     driver.linkLibrary(util);
 
@@ -354,6 +382,12 @@ pub fn build(b: *std.Build) void {
 
     inline for (std.meta.fields(DriverClass.I2cDevice)) |device| {
         const driver = addI2cDriverDevice(b, util, @enumFromInt(device.value), target, optimize, i2c_client_include);
+        driver.linkLibrary(util_putchar_debug);
+        b.installArtifact(driver);
+    }
+
+    inline for (std.meta.fields(DriverClass.Pcie)) |class| {
+        const driver = addPcieDriver(b, util, @enumFromInt(class.value), target, optimize);
         driver.linkLibrary(util_putchar_debug);
         b.installArtifact(driver);
     }
