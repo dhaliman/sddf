@@ -20,19 +20,19 @@ typedef enum gpu_req_code {
     GPU_REQ_RESOURCE_CREATE_BLOB,
     /* Set the scanout of a blob resource */
     GPU_REQ_SET_SCANOUT_BLOB,
-    /* Create a regular resource in gpu with private memory */
+    /* Create a regular 2D resource in device */
     GPU_REQ_RESOURCE_CREATE_2D,
-    /* Set the scanout of a regular resource */
+    /* Set the scanout of a regular 2D resource */
     GPU_REQ_SET_SCANOUT,
-    /* Attach a shared contiguous memory backing to resource */
+    /* Attach a contiguous memory backing to resource */
     GPU_REQ_RESOURCE_ATTACH_BACKING,
-    /* Detach a shared memory backing from resource */
+    /* Detach a memory backing from resource */
     GPU_REQ_RESOURCE_DETACH_BACKING,  
-    /* For resources with private memory, transfer data in shared memory backing to private memory */
+    /* For regular 2D resources with private memory, transfer data from memory backing to resource private memory */
     GPU_REQ_TRANSFER_TO_2D,
-    /* Flushes memory of a resource from gpu to scanout */  
+    /* Flushes memory of a resource from device to scanout */  
     GPU_REQ_RESOURCE_FLUSH,
-    /* Destroy resource in gpu */
+    /* Destroy resource in device */
     GPU_REQ_RESOURCE_UNREF,
 } gpu_req_code_t;
 
