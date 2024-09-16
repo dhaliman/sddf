@@ -30,7 +30,7 @@
 
 #define SERIAL_CLI0_NAME "client0"
 #define SERIAL_CLI1_NAME "client1"
-#define SERIAL_CLI2_NAME "bench"
+#define SERIAL_CLI2_NAME "bench0"
 #define SERIAL_VIRT_TX_NAME "serial_virt_tx"
 
 #define SERIAL_QUEUE_SIZE                          0x1000
