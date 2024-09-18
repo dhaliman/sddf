@@ -144,22 +144,22 @@ static void virtio_gpu_init(void)
     /* Do MMIO device init (section 4.2.3.1) */
     if (!virtio_mmio_check_magic(regs)) {
         LOG_GPU_VIRTIO_DRIVER_ERR("Invalid virtIO magic value!\n");
-        while (1) {}
+        assert(false);
     }
 
     if (virtio_mmio_version(regs) != VIRTIO_VERSION) {
         LOG_GPU_VIRTIO_DRIVER_ERR("Not correct virtIO version!\n");
-        while (1) {}
+        assert(false);
     }
 
     if (!virtio_mmio_check_device_id(regs, VIRTIO_DEVICE_ID_GPU)) {
         LOG_GPU_VIRTIO_DRIVER_ERR("Not a virtIO gpu device!\n");
-        while (1) {}
+        assert(false);
     }
 
     if (virtio_mmio_version(regs) != VIRTIO_GPU_DRIVER_VERSION) {
         LOG_GPU_VIRTIO_DRIVER_ERR("Driver does not support given virtIO version: 0x%x\n", virtio_mmio_version(regs));
-        while (1) {}
+        assert(false);
     }
 
     /* First reset the device */
@@ -172,7 +172,7 @@ static void virtio_gpu_init(void)
     /* Now we can read configuration space to validate its fields */
     if (virtio_config->num_scanouts == 0) {
         LOG_GPU_VIRTIO_DRIVER_ERR("No scanouts available!\n");
-        while (1) {}
+        assert(false);
     }
 
     uint32_t dev_features_low = regs->DeviceFeatures;
@@ -192,11 +192,11 @@ static void virtio_gpu_init(void)
      */
     if (!(dev_features_low & BIT_LOW(VIRTIO_GPU_F_RESOURCE_BLOB))) {
         LOG_GPU_VIRTIO_DRIVER_ERR("Device does not support blob resources!\n");
-        while (1) {}
+        assert(false);
     }
     if (!(dev_features_high & BIT_HIGH(VIRTIO_F_VERSION_1))) {
         LOG_GPU_VIRTIO_DRIVER_ERR("Device does not support virtIO version 1!\n");
-        while (1) {}
+        assert(false);
     }
     uint32_t drv_features_low = 0 | BIT_LOW(VIRTIO_GPU_F_RESOURCE_BLOB);
     uint32_t drv_features_high = 0 | BIT_HIGH(VIRTIO_F_VERSION_1);
@@ -214,7 +214,7 @@ static void virtio_gpu_init(void)
     regs->Status |= VIRTIO_DEVICE_STATUS_FEATURES_OK;
     if (!(regs->Status & VIRTIO_DEVICE_STATUS_FEATURES_OK)) {
         LOG_GPU_VIRTIO_DRIVER_ERR("Device status features is not OK!\n");
-        while (1) {}
+        assert(false);
     }
 
     /* Add virtqueues */
