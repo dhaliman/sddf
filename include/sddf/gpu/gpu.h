@@ -41,7 +41,7 @@ typedef enum gpu_formats {
 
 typedef struct gpu_scanout {
     /* (x, y) indicates the preferred position of scanout, (width, length) is the scanout's dimensions */
-    gpu_rect_t rect; 
+    gpu_rect_t rect;
     bool enabled;
 } gpu_scanout_t;
 

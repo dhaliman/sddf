@@ -1,3 +1,8 @@
+/*
+ * Copyright 2024, UNSW
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
 /* This file is used to put our client framebuffer image into program memory */
 
 .section .fb_img, "aw", @progbits

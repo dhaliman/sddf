@@ -1,3 +1,8 @@
+/*
+ * Copyright 2024, UNSW
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
 #include <microkit.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -22,13 +27,14 @@
 #define CLI_CH_OFFSET 1
 
 #define UNMAPPED_RESOURCE_ID UINT32_MAX
-_Static_assert(GPU_MAX_RESOURCES <= UINT32_MAX - 2,
-"Resource ids can only occupy 32 bits of memory, with the smallest value of 0 reserved for disabling scanout and\
+_Static_assert(
+    GPU_MAX_RESOURCES <= UINT32_MAX - 2,
+    "Resource ids can only occupy 32 bits of memory, with the smallest value of 0 reserved for disabling scanout and\
 the largest value reserved for unmapped resources");
 
 #define VIRTUALISER_ID UINT32_MAX
-_Static_assert(GPU_NUM_CLIENTS <= UINT32_MAX - 1,
-"Client ids can only occupy 32 bits of memory, with the largest value reserved for virtualiser id itself");
+_Static_assert(GPU_NUM_CLIENTS <= UINT32_MAX - 1, "Client ids can only occupy 32 bits of memory, with the largest "
+               "value reserved for virtualiser id itself");
 
 /* Microkit patched variables */
 gpu_events_t *gpu_driver_events;
@@ -88,7 +94,7 @@ static ialloc_t req_ialloc;
 static uint32_t req_ialloc_idxlist[GPU_QUEUE_CAPACITY_DRV];
 
 /* Display info populated during initialisation and any display_info event */
-static gpu_resp_get_display_info_t get_display_info = {0};
+static gpu_resp_get_display_info_t get_display_info = { 0 };
 
 static bool pending_display_info_request = false;
 static bool try_again_display_info_req = false;
@@ -154,7 +160,7 @@ void notified(microkit_channel ch)
 static inline void init_request_get_display_info()
 {
     int err = 0;
-    err = gpu_enqueue_req(&drv_h, (gpu_req_t){
+    err = gpu_enqueue_req(&drv_h, (gpu_req_t) {
         .code = GPU_REQ_GET_DISPLAY_INFO,
         .id = 0,
         .get_display_info = {
@@ -172,7 +178,7 @@ static inline bool handle_init_get_display_info_response()
         LOG_GPU_VIRT("Waiting on display info response, but response queue is empty\n");
         return false;
     }
-    gpu_resp_t resp = {0};
+    gpu_resp_t resp = { 0 };
     err = gpu_dequeue_resp(&drv_h, &resp);
     assert(!err);
     assert(resp.id == 0);
@@ -190,7 +196,8 @@ static inline bool rect_overlaps(uint32_t width, uint32_t height, gpu_rect_t rec
 static inline bool gpu_resource_create_blob(int cli_id, gpu_req_t *req, gpu_req_t *drv_req, gpu_resp_t *fail_resp)
 {
     if (req->resource_create_blob.resource_id == GPU_DISABLE_SCANOUT_RESOURCE_ID) {
-        LOG_GPU_VIRT_ERR("RESOURCE_CREATE_BLOB: Cannot create resource on reserved resource id, failing request\n");
+        LOG_GPU_VIRT_ERR("RESOURCE_CREATE_BLOB: Cannot create resource on "
+                         "reserved resource id, failing request\n");
         fail_resp->status = GPU_RESP_ERR_INVALID_RESOURCE_ID;
         return false;
     }
@@ -202,13 +209,16 @@ static inline bool gpu_resource_create_blob(int cli_id, gpu_req_t *req, gpu_req_
     }
 
     if (ialloc_full(&res_ialloc)) {
-        LOG_GPU_VIRT_ERR("RESOURCE_CREATE_BLOB: Resource mapping is full, failing request\n");
+        LOG_GPU_VIRT_ERR("RESOURCE_CREATE_BLOB: Resource mapping is full, "
+                         "failing request\n");
         fail_resp->status = GPU_RESP_ERR_UNSPEC;
         return false;
     }
 
-    if (req->resource_create_blob.mem_offset + req->resource_create_blob.mem_size > gpu_virt_cli_data_region_size(cli_id)) {
-        LOG_GPU_VIRT_ERR("RESOURCE_CREATE_BLOB: Range in memory region to store blob resource is out of its allocated bounds, failing request\n");
+    if (req->resource_create_blob.mem_offset + req->resource_create_blob.mem_size
+        > gpu_virt_cli_data_region_size(cli_id)) {
+        LOG_GPU_VIRT_ERR("RESOURCE_CREATE_BLOB: Range in memory region to store blob "
+                         "resource is out of its allocated bounds, failing request\n");
         fail_resp->status = GPU_RESP_ERR_INVALID_PARAMETER;
         return false;
     }
@@ -261,27 +271,32 @@ static inline bool gpu_set_scanout_blob(int cli_id, gpu_req_t *req, gpu_req_t *d
     }
 
     if (!drv_resources[clients[cli_id].res_map_virt_to_drv[req->set_scanout_blob.resource_id]].is_blob) {
-        LOG_GPU_VIRT_ERR("SET_SCANOUT_BLOB: Resource is not a blob resource, failing request\n");
+        LOG_GPU_VIRT_ERR("SET_SCANOUT_BLOB: Resource is not a blob resource, "
+                         "failing request\n");
         fail_resp->status = GPU_RESP_ERR_INVALID_RESOURCE_ID;
         return false;
     }
 
-    if (req->set_scanout_blob.offset + req->set_scanout_blob.stride * req->set_scanout_blob.height >
-        drv_resources[clients[cli_id].res_map_virt_to_drv[req->set_scanout_blob.resource_id]].mem_size) {
-        LOG_GPU_VIRT_ERR("SET_SCANOUT_BLOB: Specified resource memory layout exceeds its allocated memory, failing request\n");
+    if (req->set_scanout_blob.offset + req->set_scanout_blob.stride * req->set_scanout_blob.height
+        > drv_resources[clients[cli_id].res_map_virt_to_drv[req->set_scanout_blob.resource_id]].mem_size) {
+        LOG_GPU_VIRT_ERR("SET_SCANOUT_BLOB: Specified resource memory layout "
+                         "exceeds its allocated memory, failing request\n");
         fail_resp->status = GPU_RESP_ERR_UNSPEC;
         return false;
     }
 
     if (!rect_overlaps(req->set_scanout_blob.width, req->set_scanout_blob.height, req->set_scanout_blob.rect)) {
-        LOG_GPU_VIRT_ERR("SET_SCANOUT_BLOB: Scanout rectangle is outside the bounds of the resource, failing request\n");
+        LOG_GPU_VIRT_ERR("SET_SCANOUT_BLOB: Scanout rectangle is outside the "
+                         "bounds of the resource, failing request\n");
         fail_resp->status = GPU_RESP_ERR_INVALID_BOUNDS;
         return false;
     }
 
     blob_scanouts[req->set_scanout_blob.scanout_id][req->set_scanout_blob.resource_id].active = true;
-    blob_scanouts[req->set_scanout_blob.scanout_id][req->set_scanout_blob.resource_id].width = req->set_scanout_blob.width;
-    blob_scanouts[req->set_scanout_blob.scanout_id][req->set_scanout_blob.resource_id].height = req->set_scanout_blob.height;
+    blob_scanouts[req->set_scanout_blob.scanout_id][req->set_scanout_blob.resource_id].width =
+        req->set_scanout_blob.width;
+    blob_scanouts[req->set_scanout_blob.scanout_id][req->set_scanout_blob.resource_id].height =
+        req->set_scanout_blob.height;
 
     reqsbk[drv_req->id].res_virt = req->set_scanout_blob.resource_id;
 
@@ -301,7 +316,8 @@ static inline bool gpu_resource_create_2d(int cli_id, gpu_req_t *req, gpu_req_t 
 {
     int err = 0;
     if (req->resource_create_2d.resource_id == GPU_DISABLE_SCANOUT_RESOURCE_ID) {
-        LOG_GPU_VIRT_ERR("RESOURCE_CREATE_2D: Cannot create resource on reserved resource id, failing request\n");
+        LOG_GPU_VIRT_ERR("RESOURCE_CREATE_2D: Cannot create resource on "
+                         "reserved resource id, failing request\n");
         fail_resp->status = GPU_RESP_ERR_INVALID_RESOURCE_ID;
         return false;
     }
@@ -375,26 +391,32 @@ static inline bool gpu_resource_attach_backing(int cli_id, gpu_req_t *req, gpu_r
         return false;
     }
 
-    if (req->resource_attach_backing.mem_offset + req->resource_attach_backing.mem_size > gpu_virt_cli_data_region_size(cli_id)) {
-        LOG_GPU_VIRT_ERR("RESOURCE_ATTACH_BACKING: Range in memory region to attach for backing is out of its allocated bounds, failing request\n");
+    if (req->resource_attach_backing.mem_offset + req->resource_attach_backing.mem_size
+        > gpu_virt_cli_data_region_size(cli_id)) {
+        LOG_GPU_VIRT_ERR("RESOURCE_ATTACH_BACKING: Range in memory region to attach for "
+                         "backing is out of its allocated bounds, failing request\n");
         fail_resp->status = GPU_RESP_ERR_INVALID_PARAMETER;
         return false;
     }
 
     if (drv_resources[clients[cli_id].res_map_virt_to_drv[req->resource_attach_backing.resource_id]].has_backing) {
-        LOG_GPU_VIRT_ERR("RESOURCE_ATTACH_BACKING: Attaching backing to resource which already has memory backing, failing request\n");
+        LOG_GPU_VIRT_ERR("RESOURCE_ATTACH_BACKING: Attaching backing to resource which "
+                         "already has memory backing, failing request\n");
         fail_resp->status = GPU_RESP_ERR_UNSPEC;
         return false;
     }
 
     drv_resources[clients[cli_id].res_map_virt_to_drv[req->resource_attach_backing.resource_id]].has_backing = true;
-    drv_resources[clients[cli_id].res_map_virt_to_drv[req->resource_attach_backing.resource_id]].mem_offset = req->resource_attach_backing.mem_offset;
-    drv_resources[clients[cli_id].res_map_virt_to_drv[req->resource_attach_backing.resource_id]].mem_size = req->resource_attach_backing.mem_size;
+    drv_resources[clients[cli_id].res_map_virt_to_drv[req->resource_attach_backing.resource_id]].mem_offset =
+        req->resource_attach_backing.mem_offset;
+    drv_resources[clients[cli_id].res_map_virt_to_drv[req->resource_attach_backing.resource_id]].mem_size =
+        req->resource_attach_backing.mem_size;
 
     reqsbk[drv_req->id].res_virt = req->resource_attach_backing.resource_id;
 
     drv_req->code = GPU_REQ_RESOURCE_ATTACH_BACKING;
-    drv_req->resource_attach_backing.resource_id = clients[cli_id].res_map_virt_to_drv[req->resource_attach_backing.resource_id];
+    drv_req->resource_attach_backing.resource_id =
+        clients[cli_id].res_map_virt_to_drv[req->resource_attach_backing.resource_id];
     drv_req->resource_attach_backing.mem_offset = req->resource_attach_backing.mem_offset;
     drv_req->resource_attach_backing.mem_size = req->resource_attach_backing.mem_size;
     return true;
@@ -410,7 +432,8 @@ static inline bool gpu_resource_detach_backing(int cli_id, gpu_req_t *req, gpu_r
     }
 
     if (!drv_resources[clients[cli_id].res_map_virt_to_drv[req->resource_detach_backing.resource_id]].has_backing) {
-        LOG_GPU_VIRT_ERR("RESOURCE_DETACH_BACKING: Detaching backing from resource which does not have an existing memory backing, failing request\n");
+        LOG_GPU_VIRT_ERR("RESOURCE_DETACH_BACKING: Detaching backing from resource which "
+                         "does not have an existing memory backing, failing request\n");
         fail_resp->status = GPU_RESP_ERR_UNSPEC;
         return false;
     }
@@ -420,7 +443,8 @@ static inline bool gpu_resource_detach_backing(int cli_id, gpu_req_t *req, gpu_r
     reqsbk[drv_req->id].res_virt = req->resource_detach_backing.resource_id;
 
     drv_req->code = GPU_REQ_RESOURCE_DETACH_BACKING;
-    drv_req->resource_detach_backing.resource_id = clients[cli_id].res_map_virt_to_drv[req->resource_detach_backing.resource_id];
+    drv_req->resource_detach_backing.resource_id =
+        clients[cli_id].res_map_virt_to_drv[req->resource_detach_backing.resource_id];
     return true;
 }
 
@@ -433,7 +457,7 @@ static inline bool gpu_set_scanout(int cli_id, gpu_req_t *req, gpu_req_t *drv_re
     }
 
     /* Disable scanout case */
-    if (req->set_scanout.resource_id == GPU_DISABLE_SCANOUT_RESOURCE_ID){
+    if (req->set_scanout.resource_id == GPU_DISABLE_SCANOUT_RESOURCE_ID) {
         reqsbk[drv_req->id].res_virt = req->set_scanout.resource_id;
         drv_req->code = GPU_REQ_SET_SCANOUT;
         drv_req->set_scanout.resource_id = GPU_DISABLE_SCANOUT_RESOURCE_ID;
@@ -457,10 +481,11 @@ static inline bool gpu_set_scanout(int cli_id, gpu_req_t *req, gpu_req_t *drv_re
         return false;
     }
 
-    if (!rect_overlaps(drv_resources[clients[cli_id].res_map_virt_to_drv[req->set_scanout.resource_id]].width, 
+    if (!rect_overlaps(drv_resources[clients[cli_id].res_map_virt_to_drv[req->set_scanout.resource_id]].width,
                        drv_resources[clients[cli_id].res_map_virt_to_drv[req->set_scanout.resource_id]].height,
                        req->set_scanout.rect)) {
-        LOG_GPU_VIRT_ERR("SET_SCANOUT: Scanout rectangle out of bounds from resource, failing request\n");
+        LOG_GPU_VIRT_ERR("SET_SCANOUT: Scanout rectangle out of bounds from "
+                         "resource, failing request\n");
         fail_resp->status = GPU_RESP_ERR_INVALID_BOUNDS;
         return false;
     }
@@ -494,7 +519,8 @@ static inline bool gpu_transfer_to_2d(int cli_id, gpu_req_t *req, gpu_req_t *drv
     }
 
     if (!drv_resources[clients[cli_id].res_map_virt_to_drv[req->transfer_to_2d.resource_id]].has_backing) {
-        LOG_GPU_VIRT_ERR("TRANSFER_TO_2D: Resource does not have backing, failing request\n");
+        LOG_GPU_VIRT_ERR("TRANSFER_TO_2D: Resource does not have backing, "
+                         "failing request\n");
         fail_resp->status = GPU_RESP_ERR_UNSPEC;
         return false;
     }
@@ -502,22 +528,26 @@ static inline bool gpu_transfer_to_2d(int cli_id, gpu_req_t *req, gpu_req_t *drv
     if (!rect_overlaps(drv_resources[clients[cli_id].res_map_virt_to_drv[req->transfer_to_2d.resource_id]].width,
                        drv_resources[clients[cli_id].res_map_virt_to_drv[req->transfer_to_2d.resource_id]].height,
                        req->transfer_to_2d.rect)) {
-        LOG_GPU_VIRT_ERR("TRANSFER_TO_2D: Rectangle out of bounds from resource, failing request\n");
+        LOG_GPU_VIRT_ERR("TRANSFER_TO_2D: Rectangle out of bounds from "
+                         "resource, failing request\n");
         fail_resp->status = GPU_RESP_ERR_INVALID_BOUNDS;
         return false;
     }
 
-    if (req->transfer_to_2d.mem_offset + req->transfer_to_2d.rect.width * req->transfer_to_2d.rect.height * GPU_BPP_2D >
-        drv_resources[clients[cli_id].res_map_virt_to_drv[req->transfer_to_2d.resource_id]].mem_size) {
-        LOG_GPU_VIRT_ERR("TRANSFER_TO_2D: Transfer region out of bounds from memory backing, failing request\n");
+    if (req->transfer_to_2d.mem_offset + req->transfer_to_2d.rect.width * req->transfer_to_2d.rect.height * GPU_BPP_2D
+        > drv_resources[clients[cli_id].res_map_virt_to_drv[req->transfer_to_2d.resource_id]].mem_size) {
+        LOG_GPU_VIRT_ERR("TRANSFER_TO_2D: Transfer region out of bounds from "
+                         "memory backing, failing request\n");
         fail_resp->status = GPU_RESP_ERR_INVALID_PARAMETER;
         return false;
     }
 
-    unsigned long transfer_base = (unsigned long)(gpu_virt_cli_data_region(gpu_client_data, cli_id) 
-                                                + drv_resources[clients[cli_id].res_map_virt_to_drv[req->transfer_to_2d.resource_id]].mem_offset
-                                                + req->transfer_to_2d.mem_offset);
-    cache_clean(transfer_base, transfer_base + req->transfer_to_2d.rect.width * req->transfer_to_2d.rect.height * GPU_BPP_2D);
+    unsigned long transfer_base =
+        (unsigned long)(gpu_virt_cli_data_region(gpu_client_data, cli_id)
+                        + drv_resources[clients[cli_id].res_map_virt_to_drv[req->transfer_to_2d.resource_id]].mem_offset
+                        + req->transfer_to_2d.mem_offset);
+    cache_clean(transfer_base,
+                transfer_base + req->transfer_to_2d.rect.width * req->transfer_to_2d.rect.height * GPU_BPP_2D);
 
     reqsbk[drv_req->id].res_virt = req->transfer_to_2d.resource_id;
 
@@ -539,29 +569,33 @@ static inline bool gpu_resource_flush(int cli_id, gpu_req_t *req, gpu_req_t *drv
         fail_resp->status = GPU_RESP_ERR_INVALID_RESOURCE_ID;
         return false;
     }
-    
+
     if (drv_resources[clients[cli_id].res_map_virt_to_drv[req->resource_flush.resource_id]].is_blob) {
         if (!drv_resources[clients[cli_id].res_map_virt_to_drv[req->resource_flush.resource_id]].has_backing) {
-            LOG_GPU_VIRT_ERR("RESOURCE_FLUSH: Blob resource has no backing, failing request\n");
+            LOG_GPU_VIRT_ERR("RESOURCE_FLUSH: Blob resource has no backing, "
+                             "failing request\n");
             fail_resp->status = GPU_RESP_ERR_UNSPEC;
             return false;
         }
 
         for (int i = 0; i < GPU_MAX_SCANOUTS; i++) {
             if (blob_scanouts[i][clients[cli_id].res_map_virt_to_drv[req->resource_flush.resource_id]].active
-                && !rect_overlaps(blob_scanouts[i][clients[cli_id].res_map_virt_to_drv[req->resource_flush.resource_id]].width,
-                                blob_scanouts[i][clients[cli_id].res_map_virt_to_drv[req->resource_flush.resource_id]].height,
-                                req->resource_flush.rect)) {
-                LOG_GPU_VIRT_ERR("RESOURCE_FLUSH: Rectangle out of bounds from blob resource, failing request\n");
+                && !rect_overlaps(
+                    blob_scanouts[i][clients[cli_id].res_map_virt_to_drv[req->resource_flush.resource_id]].width,
+                    blob_scanouts[i][clients[cli_id].res_map_virt_to_drv[req->resource_flush.resource_id]].height,
+                    req->resource_flush.rect)) {
+                LOG_GPU_VIRT_ERR("RESOURCE_FLUSH: Rectangle out of bounds from "
+                                 "blob resource, failing request\n");
                 fail_resp->status = GPU_RESP_ERR_INVALID_BOUNDS;
                 return false;
             }
         }
     } else {
         if (!rect_overlaps(drv_resources[clients[cli_id].res_map_virt_to_drv[req->resource_flush.resource_id]].width,
-                       drv_resources[clients[cli_id].res_map_virt_to_drv[req->resource_flush.resource_id]].height,
-                       req->resource_flush.rect)) {
-            LOG_GPU_VIRT_ERR("RESOURCE_FLUSH: Rectangle out of bounds from resource, failing request\n");
+                           drv_resources[clients[cli_id].res_map_virt_to_drv[req->resource_flush.resource_id]].height,
+                           req->resource_flush.rect)) {
+            LOG_GPU_VIRT_ERR("RESOURCE_FLUSH: Rectangle out of bounds from "
+                             "resource, failing request\n");
             fail_resp->status = GPU_RESP_ERR_INVALID_BOUNDS;
             return false;
         }
@@ -584,7 +618,7 @@ static bool handle_client(int cli_id)
     bool driver_notify = false;
     bool client_notify = false;
     gpu_queue_handle_t *h = &clients[cli_id].queue_h;
-    gpu_req_t req = {0};
+    gpu_req_t req = { 0 };
     while (!gpu_queue_empty_req(h)) {
         err = gpu_dequeue_req(h, &req);
         assert(!err);
@@ -593,21 +627,26 @@ static bool handle_client(int cli_id)
 
         if (req.code == GPU_REQ_GET_DISPLAY_INFO) {
             if (gpu_queue_full_resp(h)) {
-                LOG_GPU_VIRT_ERR("Client %d request %d response queue is full, dropping get_display_info response\n", cli_id, req.id);
+                LOG_GPU_VIRT_ERR("Client %d request %d response queue is full, "
+                                 "dropping get_display_info response\n",
+                                 cli_id, req.id);
                 continue;
             }
             client_notify = true;
-            if (req.get_display_info.mem_offset + sizeof(gpu_resp_get_display_info_t) > gpu_virt_cli_data_region_size(cli_id)) {
-                LOG_GPU_VIRT_ERR("GET_DISPLAY_INFO: Range in memory region to store display info is out of its allocated bounds, failing request\n");
-                err = gpu_enqueue_resp(h, (gpu_resp_t){
+            if (req.get_display_info.mem_offset + sizeof(gpu_resp_get_display_info_t)
+                > gpu_virt_cli_data_region_size(cli_id)) {
+                LOG_GPU_VIRT_ERR("GET_DISPLAY_INFO: Range in memory region to store display "
+                                 "info is out of its allocated bounds, failing request\n");
+                err = gpu_enqueue_resp(h, (gpu_resp_t) {
                     .id = req.id,
                     .status = GPU_RESP_ERR_INVALID_PARAMETER,
                 });
                 assert(!err);
                 continue;
             }
-            sddf_memcpy((void *)(gpu_virt_cli_data_region(gpu_client_data, cli_id) + req.get_display_info.mem_offset), &get_display_info, sizeof(gpu_resp_get_display_info_t));
-            err = gpu_enqueue_resp(h, (gpu_resp_t){
+            sddf_memcpy((void *)(gpu_virt_cli_data_region(gpu_client_data, cli_id) + req.get_display_info.mem_offset),
+                        &get_display_info, sizeof(gpu_resp_get_display_info_t));
+            err = gpu_enqueue_resp(h, (gpu_resp_t) {
                 .id = req.id,
                 .status = GPU_RESP_OK,
             });
@@ -630,7 +669,7 @@ static bool handle_client(int cli_id)
             break;
         }
 
-        gpu_req_t drv_req = {0};
+        gpu_req_t drv_req = { 0 };
         uint32_t drv_req_id = 0;
         int err = ialloc_alloc(&req_ialloc, &drv_req_id);
         assert(!err);
@@ -690,7 +729,9 @@ static bool handle_client(int cli_id)
             err = ialloc_free(&req_ialloc, drv_req_id);
             assert(!err);
             if (gpu_queue_full_resp(&clients[cli_id].queue_h)) {
-                LOG_GPU_VIRT_ERR("Client %d request %d has failed AND response queue is also full, dropping response\n", cli_id, req.id);
+                LOG_GPU_VIRT_ERR("Client %d request %d has failed AND response "
+                                 "queue is also full, dropping response\n",
+                                 cli_id, req.id);
                 continue;
             }
             err = gpu_enqueue_resp(&clients[cli_id].queue_h, fail_resp);
@@ -743,7 +784,7 @@ static inline bool request_display_info()
     reqsbk[drv_req_id].cli_req_id = drv_req_id;
     reqsbk[drv_req_id].code = GPU_REQ_GET_DISPLAY_INFO;
 
-    gpu_req_t drv_req = {0};
+    gpu_req_t drv_req = { 0 };
     drv_req.id = drv_req_id;
     drv_req.code = GPU_REQ_GET_DISPLAY_INFO;
     drv_req.get_display_info.mem_offset = 0;
@@ -756,9 +797,9 @@ static inline bool request_display_info()
 static void handle_driver()
 {
     int err = 0;
-    bool client_notify[GPU_NUM_CLIENTS] = {0};
+    bool client_notify[GPU_NUM_CLIENTS] = { 0 };
     bool driver_notify = false;
-    gpu_resp_t resp = {0};
+    gpu_resp_t resp = { 0 };
     while (!gpu_queue_empty_resp(&drv_h)) {
         err = gpu_dequeue_resp(&drv_h, &resp);
         assert(!err);
@@ -781,7 +822,8 @@ static void handle_driver()
                 pending_display_info_request = false;
                 try_again_display_info_req = false;
                 /* Forward display info event to clients*/
-                LOG_GPU_VIRT("Received display info data from driver, forwarding display info event to clients\n");
+                LOG_GPU_VIRT("Received display info data from driver, "
+                             "forwarding display info event to clients\n");
                 for (int i = 0; i < GPU_NUM_CLIENTS; i++) {
                     gpu_events_set_display_info(clients[i].events);
                     client_notify[i] = true;
@@ -870,7 +912,8 @@ static void handle_driver()
         assert(!err);
 
         if (gpu_queue_full_resp(&clients[reqbk->cli_id].queue_h)) {
-            LOG_GPU_VIRT_ERR("Client %d response queue is full, dropping response id %d\n", reqbk->cli_id, reqbk->cli_req_id);
+            LOG_GPU_VIRT_ERR("Client %d response queue is full, dropping response id %d\n", reqbk->cli_id,
+                             reqbk->cli_req_id);
             continue;
         }
 
@@ -892,7 +935,8 @@ static void handle_driver()
     }
 
     if (gpu_events_check_display_info(gpu_driver_events) && !pending_display_info_request) {
-        LOG_GPU_VIRT("Received display info event from driver, sending display info request\n");
+        LOG_GPU_VIRT("Received display info event from driver, sending display "
+                     "info request\n");
         if (request_display_info()) {
             pending_display_info_request = true;
             gpu_events_clear_display_info(gpu_driver_events);

@@ -18,10 +18,10 @@ For `apt` users: `sudo apt-get install imagemagick`.
 
 For Homebrew users: `brew install imagemagick`.
 
-### Simulating on QEMU
-This example only supports simulating with QEMU only linux machines as it requires the 'udmabuf' framework.
-This is a requirement in order to enable virtio-gpu blob resources. Additionally, sudo permissions is required
-to access the `udmabuf` framework.
+### Simulating on QEMU only on Linux machines
+This example supports simulating with QEMU only Linux machines as it requires the
+'udmabuf' framework. This is a requirement in order to enable virtio-gpu blob resources.
+Additionally, sudo permissions is required to access the `udmabuf` framework.
 
 This example also requires you to have a compatible GUI installed for QEMU.
 Make sure QEMU's default display is not set to `-display none`.
@@ -31,6 +31,8 @@ Make sure QEMU's default display is not set to `-display none`.
 ```sh
 make MICROKIT_SDK=<path/to/sdk> MICROKIT_BOARD=<board>
 ```
+
+If `MICROKIT_BOARD` is not specified, the default board is `qemu_virt_aarch64`.
 
 After building, the system image to load will be `build/loader.img`.
 
@@ -44,6 +46,8 @@ You can also build this example with the Zig build system:
 ```sh
 zig build -Dsdk=/path/to/sdk -Dboard=<board>
 ```
+
+If `-Dboard` is not specified, the default board is `qemu_virt_aarch64`.
 
 The options for `<board>` are the same as the Makefile.
 

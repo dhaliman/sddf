@@ -16,7 +16,7 @@ typedef struct gpu_events_t {
 
 /**
  * Set a display info event.
- * 
+ *
  * @param h queue handle containing events.
  */
 static inline void gpu_events_set_display_info(gpu_events_t *events)
@@ -26,7 +26,7 @@ static inline void gpu_events_set_display_info(gpu_events_t *events)
 
 /**
  * Clear a display info event.
- * 
+ *
  * @param h queue handle containing events.
  */
 static inline void gpu_events_clear_display_info(gpu_events_t *events)
@@ -36,13 +36,12 @@ static inline void gpu_events_clear_display_info(gpu_events_t *events)
 
 /**
  * Check if a display info event is set.
- * 
+ *
  * @param h queue handle containing events.
- * 
+ *
  * @return true if display info event is set, false otherwise.
  */
 static inline bool gpu_events_check_display_info(gpu_events_t *events)
 {
     return events->display_info;
 }
-

@@ -52,7 +52,8 @@
 /* Size of data contained in a single descriptor */
 #define VIRTIO_DATA_ENTRY_SIZE 2048
 _Static_assert((uint64_t)VIRTIO_DATA_ENTRY_SIZE * (uint64_t)VIRTQ_QUEUE_SIZE <= GPU_VIRTIO_DATA_REGION_SIZE,
-               "VIRTIO_DATA_ENTRY_SIZE * VIRTQ_QUEUE_SIZE must be less than or equal to GPU_VIRTIO_DATA_REGION_SIZE");
+               "VIRTIO_DATA_ENTRY_SIZE * VIRTQ_QUEUE_SIZE must be less than or "
+               "equal to GPU_VIRTIO_DATA_REGION_SIZE");
 
 #define VIRTIO_DATA(idx) ((idx) * VIRTIO_DATA_ENTRY_SIZE + virtio_data)
 #define VIRTIO_DATA_PADDR(idx) ((idx) * VIRTIO_DATA_ENTRY_SIZE + virtio_data_paddr)
@@ -77,17 +78,18 @@ uintptr_t gpu_driver_data;
 uintptr_t gpu_client_data_paddr;
 
 static volatile virtio_mmio_regs_t *regs;
-static volatile struct virtio_gpu_config *virtio_config; /* gpu device configuration, populated by device during initialisation. */
+static volatile struct virtio_gpu_config
+    *virtio_config; /* gpu device configuration, populated by device during initialisation. */
 static struct virtq virtq;
 static gpu_queue_handle_t gpu_queue_h;
 
 /* Store information between a request/response pair */
 typedef struct reqbk {
     /* Store virtio request code so that when device responds, we can check whether
-     * it has overwritten into our virtIO header descriptor, which is marked as read-only.
+     * it has written into our virtIO header descriptor, which is marked as read-only.
      */
     enum virtio_gpu_ctrl_type virtio_code;
-    /* Offset into sddf data memory region. Currently only DISPLAY_INFO requests 
+    /* Offset into sddf data memory region. Currently only DISPLAY_INFO requests
      * imply data written in the data region, which would need to be stored.
      */
     uint64_t mem_offset;
@@ -148,7 +150,7 @@ static void virtio_gpu_init(void)
     }
 
     if (virtio_mmio_version(regs) != VIRTIO_VERSION) {
-        LOG_GPU_VIRTIO_DRIVER_ERR("Not correct virtIO version!\n");
+        LOG_GPU_VIRTIO_DRIVER_ERR("Incorrect virtIO version!\n");
         assert(false);
     }
 
@@ -159,6 +161,7 @@ static void virtio_gpu_init(void)
 
     if (virtio_mmio_version(regs) != VIRTIO_GPU_DRIVER_VERSION) {
         LOG_GPU_VIRTIO_DRIVER_ERR("Driver does not support given virtIO version: 0x%x\n", virtio_mmio_version(regs));
+        LOG_GPU_VIRTIO_DRIVER_ERR("Driver supports virtIO version: 0x%x\n", VIRTIO_GPU_DRIVER_VERSION);
         assert(false);
     }
 
@@ -198,8 +201,8 @@ static void virtio_gpu_init(void)
         LOG_GPU_VIRTIO_DRIVER_ERR("Device does not support virtIO version 1!\n");
         assert(false);
     }
-    uint32_t drv_features_low = 0 | BIT_LOW(VIRTIO_GPU_F_RESOURCE_BLOB);
-    uint32_t drv_features_high = 0 | BIT_HIGH(VIRTIO_F_VERSION_1);
+    uint32_t drv_features_low = BIT_LOW(VIRTIO_GPU_F_RESOURCE_BLOB);
+    uint32_t drv_features_high = BIT_HIGH(VIRTIO_F_VERSION_1);
     regs->DriverFeatures = drv_features_low;
     regs->DriverFeaturesSel = 1;
     regs->DriverFeatures = drv_features_high;
@@ -232,11 +235,11 @@ static void virtio_gpu_init(void)
     assert(regs->QueueNumMax >= VIRTQ_QUEUE_SIZE);
     regs->QueueSel = VIRTIO_GPU_CONTROL_QUEUE;
     regs->QueueNum = VIRTQ_QUEUE_SIZE;
-    regs->QueueDescLow = (virtio_metadata_paddr + desc_off) & 0xFFFFFFFF;
+    regs->QueueDescLow = (virtio_metadata_paddr + desc_off) & 0xFFFFFFFFUL;
     regs->QueueDescHigh = (virtio_metadata_paddr + desc_off) >> 32;
-    regs->QueueDriverLow = (virtio_metadata_paddr + avail_off) & 0xFFFFFFFF;
+    regs->QueueDriverLow = (virtio_metadata_paddr + avail_off) & 0xFFFFFFFFUL;
     regs->QueueDriverHigh = (virtio_metadata_paddr + avail_off) >> 32;
-    regs->QueueDeviceLow = (virtio_metadata_paddr + used_off) & 0xFFFFFFFF;
+    regs->QueueDeviceLow = (virtio_metadata_paddr + used_off) & 0xFFFFFFFFUL;
     regs->QueueDeviceHigh = (virtio_metadata_paddr + used_off) >> 32;
     regs->QueueReady = 1;
 
@@ -248,6 +251,7 @@ static gpu_resp_status_t virtio_gpu_to_sddf_resp_status(enum virtio_gpu_ctrl_typ
 {
     switch (type) {
     case VIRTIO_GPU_RESP_OK_DISPLAY_INFO:
+    /* FALLTHROUGH */
     case VIRTIO_GPU_RESP_OK_NODATA:
         return GPU_RESP_OK;
     case VIRTIO_GPU_RESP_ERR_INVALID_RESOURCE_ID:
@@ -257,7 +261,9 @@ static gpu_resp_status_t virtio_gpu_to_sddf_resp_status(enum virtio_gpu_ctrl_typ
     case VIRTIO_GPU_RESP_ERR_INVALID_PARAMETER:
         return GPU_RESP_ERR_INVALID_PARAMETER;
     case VIRTIO_GPU_RESP_ERR_OUT_OF_MEMORY:
+    /* FALLTHROUGH */
     case VIRTIO_GPU_RESP_ERR_INVALID_CONTEXT_ID:
+    /* FALLTHROUGH */
     case VIRTIO_GPU_RESP_ERR_UNSPEC:
         return GPU_RESP_ERR_UNSPEC;
     default:
@@ -271,7 +277,7 @@ static enum virtio_gpu_formats sddf_to_virtio_gpu_resource_format(gpu_formats_t 
 {
     switch (format) {
     case GPU_FORMAT_B8G8R8A8_UNORM:
-        return VIRTIO_GPU_FORMAT_B8G8R8A8_UNORM;
+                return VIRTIO_GPU_FORMAT_B8G8R8A8_UNORM;
     case GPU_FORMAT_B8G8R8X8_UNORM:
         return VIRTIO_GPU_FORMAT_B8G8R8X8_UNORM;
     case GPU_FORMAT_A8R8G8B8_UNORM:
@@ -304,39 +310,37 @@ static bool handle_response()
         assert(used.id < VIRTQ_QUEUE_SIZE);
 
         LOG_GPU_VIRTIO_DRIVER("Handling response %d\n", virtio_desc_to_id[used.id]);
-        
-        struct virtq_desc desc_head = virtq.desc[used.id];        
+
+        struct virtq_desc desc_head = virtq.desc[used.id];
         assert(desc_head.len >= sizeof(struct virtio_gpu_ctrl_hdr));
         assert(desc_head.flags & VIRTQ_DESC_F_NEXT);
         assert(desc_head.next < VIRTQ_QUEUE_SIZE);
 
-        err = ialloc_free(&ialloc_desc, used.id);
-        assert(!err);
-        err = ialloc_free(&ialloc_desc, desc_head.next);
-        assert(!err);
-
-        gpu_resp_t resp = {0};
+        gpu_resp_t resp = { 0 };
         resp.id = virtio_desc_to_id[used.id];
         resp.status = GPU_RESP_ERR_UNSPEC;
 
         struct virtio_gpu_ctrl_hdr *req_hdr = (struct virtio_gpu_ctrl_hdr *)VIRTIO_DATA_PADDR_TO_VADDR(desc_head.addr);
         assert(req_hdr->type == reqsbk[resp.id].virtio_code);
-        switch(req_hdr->type) {
+        switch (req_hdr->type) {
         case VIRTIO_GPU_CMD_GET_DISPLAY_INFO: {
             struct virtq_desc desc_footer = virtq.desc[desc_head.next];
             assert(desc_footer.len >= sizeof(struct virtio_gpu_resp_display_info));
             assert(desc_footer.flags & VIRTQ_DESC_F_WRITE);
-            struct virtio_gpu_resp_display_info *resp_display_info = (struct virtio_gpu_resp_display_info *)VIRTIO_DATA_PADDR_TO_VADDR(desc_footer.addr);
+            struct virtio_gpu_resp_display_info *resp_display_info =
+                (struct virtio_gpu_resp_display_info *)VIRTIO_DATA_PADDR_TO_VADDR(desc_footer.addr);
             assert(resp_display_info->hdr.fence_id == req_hdr->fence_id);
             resp.status = virtio_gpu_to_sddf_resp_status(resp_display_info->hdr.type);
 
-            struct gpu_resp_get_display_info *resp_display_info_sddf = (struct gpu_resp_get_display_info *)(reqsbk[resp.id].mem_offset + gpu_driver_data);
-            int num_scanouts = (virtio_config->num_scanouts < GPU_MAX_SCANOUTS) ? virtio_config->num_scanouts : GPU_MAX_SCANOUTS;
+            struct gpu_resp_get_display_info *resp_display_info_sddf =
+                (struct gpu_resp_get_display_info *)(reqsbk[resp.id].mem_offset + gpu_driver_data);
+            int num_scanouts = (virtio_config->num_scanouts < GPU_MAX_SCANOUTS) ? virtio_config->num_scanouts
+                               : GPU_MAX_SCANOUTS;
             for (int i = 0; i < num_scanouts; i++) {
                 resp_display_info_sddf->scanouts[i].rect.x = resp_display_info->pmodes[i].r.x;
                 resp_display_info_sddf->scanouts[i].rect.y = resp_display_info->pmodes[i].r.y;
                 resp_display_info_sddf->scanouts[i].rect.width = resp_display_info->pmodes[i].r.width;
-                resp_display_info_sddf->scanouts[i].rect.height = resp_display_info->pmodes[i].r.height;    
+                resp_display_info_sddf->scanouts[i].rect.height = resp_display_info->pmodes[i].r.height;
                 resp_display_info_sddf->scanouts[i].enabled = resp_display_info->pmodes[i].enabled;
             }
             resp_display_info_sddf->num_scanouts = num_scanouts;
@@ -351,7 +355,8 @@ static bool handle_response()
             assert(desc_footer.len >= sizeof(struct virtio_gpu_ctrl_hdr));
             assert(desc_footer.flags & VIRTQ_DESC_F_WRITE);
 
-            struct virtio_gpu_ctrl_hdr *resp_hdr = (struct virtio_gpu_ctrl_hdr *)VIRTIO_DATA_PADDR_TO_VADDR(desc_footer.addr);
+            struct virtio_gpu_ctrl_hdr *resp_hdr = (struct virtio_gpu_ctrl_hdr *)VIRTIO_DATA_PADDR_TO_VADDR(
+                                                       desc_footer.addr);
             assert(resp_hdr->fence_id == req_hdr->fence_id);
             resp.status = virtio_gpu_to_sddf_resp_status(resp_hdr->type);
             assert(desc_body.flags & VIRTQ_DESC_F_NEXT);
@@ -370,7 +375,8 @@ static bool handle_response()
             assert(desc_footer.len >= sizeof(struct virtio_gpu_ctrl_hdr));
             assert(desc_footer.flags & VIRTQ_DESC_F_WRITE);
 
-            struct virtio_gpu_ctrl_hdr *resp_hdr = (struct virtio_gpu_ctrl_hdr *)VIRTIO_DATA_PADDR_TO_VADDR(desc_footer.addr);
+            struct virtio_gpu_ctrl_hdr *resp_hdr = (struct virtio_gpu_ctrl_hdr *)VIRTIO_DATA_PADDR_TO_VADDR(
+                                                       desc_footer.addr);
             assert(resp_hdr->fence_id == req_hdr->fence_id);
             resp.status = virtio_gpu_to_sddf_resp_status(resp_hdr->type);
             assert(desc_body.flags & VIRTQ_DESC_F_NEXT);
@@ -381,34 +387,47 @@ static bool handle_response()
             break;
         }
         case VIRTIO_GPU_CMD_RESOURCE_CREATE_2D:
+        /* FALLTHROUGH */
         case VIRTIO_GPU_CMD_SET_SCANOUT_BLOB:
+        /* FALLTHROUGH */
         case VIRTIO_GPU_CMD_RESOURCE_UNREF:
+        /* FALLTHROUGH */
         case VIRTIO_GPU_CMD_RESOURCE_DETACH_BACKING:
+        /* FALLTHROUGH */
         case VIRTIO_GPU_CMD_SET_SCANOUT:
+        /* FALLTHROUGH */
         case VIRTIO_GPU_CMD_TRANSFER_TO_HOST_2D:
+        /* FALLTHROUGH */
         case VIRTIO_GPU_CMD_RESOURCE_FLUSH: {
             struct virtq_desc desc_footer = virtq.desc[desc_head.next];
             assert(desc_footer.len >= sizeof(struct virtio_gpu_ctrl_hdr));
             assert(desc_footer.flags & VIRTQ_DESC_F_WRITE);
-            struct virtio_gpu_ctrl_hdr *resp_hdr = (struct virtio_gpu_ctrl_hdr *)VIRTIO_DATA_PADDR_TO_VADDR(desc_footer.addr);
+            struct virtio_gpu_ctrl_hdr *resp_hdr = (struct virtio_gpu_ctrl_hdr *)VIRTIO_DATA_PADDR_TO_VADDR(
+                                                       desc_footer.addr);
             assert(resp_hdr->fence_id == req_hdr->fence_id);
             resp.status = virtio_gpu_to_sddf_resp_status(resp_hdr->type);
             break;
         }
         default:
-            /* This should never happen as we have already checked for a valid request code when the request was made, and also
-             * whether the device has tampered with it.
+            /* This should never happen as we have already checked for a valid request
+             * code when the request was made, and also whether the device has tampered with it.
              */
-            LOG_GPU_VIRTIO_DRIVER_ERR("Unrecognised (but already sanitised) bookkept request code when processing response\n");
+            LOG_GPU_VIRTIO_DRIVER_ERR("Unrecognised (but already sanitised) bookkept request code "
+                                      "when processing response\n");
             assert(false);
             break;
         }
+
+        err = ialloc_free(&ialloc_desc, used.id);
+        assert(!err);
+        err = ialloc_free(&ialloc_desc, desc_head.next);
+        assert(!err);
 
         if (gpu_queue_full_resp(&gpu_queue_h)) {
             LOG_GPU_VIRTIO_DRIVER_ERR("Response queue is full, dropping response\n");
             continue;
         }
-        
+
         err = gpu_enqueue_resp(&gpu_queue_h, resp);
         assert(!err);
         sddf_notify = true;
@@ -426,7 +445,7 @@ static void handle_request()
     int err = 0;
     bool virtio_queue_notify = false;
     bool sddf_notify = false;
-    gpu_req_t req = {0};
+    gpu_req_t req = { 0 };
     while (!gpu_queue_empty_req(&gpu_queue_h)) {
         if (ialloc_num_free(&ialloc_desc) < VIRTIO_MAX_DESC_PER_REQ) {
             LOG_GPU_VIRTIO_DRIVER("Not enough free descriptors\n");
@@ -467,7 +486,7 @@ static void handle_request()
         virtq.desc[desc_footer_idx].len = 0;
         virtq.desc[desc_footer_idx].flags = VIRTQ_DESC_F_WRITE;
 
-        switch(req.code) {
+        switch (req.code) {
         case GPU_REQ_GET_DISPLAY_INFO: {
             reqsbk[req.id].virtio_code = VIRTIO_GPU_CMD_GET_DISPLAY_INFO;
             struct virtio_gpu_ctrl_hdr *hdr = (struct virtio_gpu_ctrl_hdr *)VIRTIO_DATA(desc_head_idx);
@@ -486,7 +505,8 @@ static void handle_request()
         }
         case GPU_REQ_RESOURCE_CREATE_BLOB: {
             reqsbk[req.id].virtio_code = VIRTIO_GPU_CMD_RESOURCE_CREATE_BLOB;
-            struct virtio_gpu_resource_create_blob *resource_create_blob = (struct virtio_gpu_resource_create_blob *)VIRTIO_DATA(desc_head_idx);
+            struct virtio_gpu_resource_create_blob *resource_create_blob =
+                (struct virtio_gpu_resource_create_blob *)VIRTIO_DATA(desc_head_idx);
             virtq.desc[desc_head_idx].len = sizeof(struct virtio_gpu_resource_create_blob);
             resource_create_blob->hdr.type = VIRTIO_GPU_CMD_RESOURCE_CREATE_BLOB;
             resource_create_blob->hdr.flags = VIRTIO_GPU_FLAG_FENCE;
@@ -495,7 +515,7 @@ static void handle_request()
             /* Type of blob resource memory: Guest only, Guest + Host, Host only */
             resource_create_blob->blob_mem = VIRTIO_GPU_BLOB_MEM_GUEST;
             /* Resource use purpose: memory access, sharing with driver instances, or sharing with other devices */
-            resource_create_blob->blob_flags = VIRTIO_GPU_BLOB_FLAG_USE_MAPPABLE; 
+            resource_create_blob->blob_flags = VIRTIO_GPU_BLOB_FLAG_USE_MAPPABLE;
             /* Rendering context id, unused in 2d */
             resource_create_blob->blob_id = 0;
             if (req.resource_create_blob.mem_size > 0) {
@@ -528,7 +548,8 @@ static void handle_request()
         }
         case GPU_REQ_SET_SCANOUT_BLOB: {
             reqsbk[req.id].virtio_code = VIRTIO_GPU_CMD_SET_SCANOUT_BLOB;
-            struct virtio_gpu_set_scanout_blob *set_scanout_blob = (struct virtio_gpu_set_scanout_blob *)VIRTIO_DATA(desc_head_idx);
+            struct virtio_gpu_set_scanout_blob *set_scanout_blob = (struct virtio_gpu_set_scanout_blob *)VIRTIO_DATA(
+                                                                       desc_head_idx);
             virtq.desc[desc_head_idx].len = sizeof(struct virtio_gpu_set_scanout_blob);
             set_scanout_blob->hdr.type = VIRTIO_GPU_CMD_SET_SCANOUT_BLOB;
             set_scanout_blob->hdr.flags = VIRTIO_GPU_FLAG_FENCE;
@@ -557,7 +578,8 @@ static void handle_request()
         }
         case GPU_REQ_RESOURCE_CREATE_2D: {
             reqsbk[req.id].virtio_code = VIRTIO_GPU_CMD_RESOURCE_CREATE_2D;
-            struct virtio_gpu_resource_create_2d *resource_create_2d =(struct virtio_gpu_resource_create_2d *)VIRTIO_DATA(desc_head_idx);
+            struct virtio_gpu_resource_create_2d *resource_create_2d =
+                (struct virtio_gpu_resource_create_2d *)VIRTIO_DATA(desc_head_idx);
             virtq.desc[desc_head_idx].len = sizeof(struct virtio_gpu_resource_create_2d);
             resource_create_2d->hdr.type = VIRTIO_GPU_CMD_RESOURCE_CREATE_2D;
             resource_create_2d->hdr.flags = VIRTIO_GPU_FLAG_FENCE;
@@ -577,7 +599,8 @@ static void handle_request()
         }
         case GPU_REQ_RESOURCE_UNREF: {
             reqsbk[req.id].virtio_code = VIRTIO_GPU_CMD_RESOURCE_UNREF;
-            struct virtio_gpu_resource_unref *resource_unref = (struct virtio_gpu_resource_unref *)VIRTIO_DATA(desc_head_idx);
+            struct virtio_gpu_resource_unref *resource_unref = (struct virtio_gpu_resource_unref *)VIRTIO_DATA(
+                                                                   desc_head_idx);
             virtq.desc[desc_head_idx].len = sizeof(struct virtio_gpu_resource_unref);
             resource_unref->hdr.type = VIRTIO_GPU_CMD_RESOURCE_UNREF;
             resource_unref->hdr.flags = VIRTIO_GPU_FLAG_FENCE;
@@ -592,7 +615,8 @@ static void handle_request()
         }
         case GPU_REQ_RESOURCE_ATTACH_BACKING: {
             reqsbk[req.id].virtio_code = VIRTIO_GPU_CMD_RESOURCE_ATTACH_BACKING;
-            struct virtio_gpu_resource_attach_backing *resource_attach_backing = (struct virtio_gpu_resource_attach_backing *)VIRTIO_DATA(desc_head_idx);
+            struct virtio_gpu_resource_attach_backing *resource_attach_backing =
+                (struct virtio_gpu_resource_attach_backing *)VIRTIO_DATA(desc_head_idx);
             virtq.desc[desc_head_idx].len = sizeof(struct virtio_gpu_resource_attach_backing);
             resource_attach_backing->hdr.type = VIRTIO_GPU_CMD_RESOURCE_ATTACH_BACKING;
             resource_attach_backing->hdr.flags = VIRTIO_GPU_FLAG_FENCE;
@@ -623,7 +647,8 @@ static void handle_request()
         }
         case GPU_REQ_RESOURCE_DETACH_BACKING: {
             reqsbk[req.id].virtio_code = VIRTIO_GPU_CMD_RESOURCE_DETACH_BACKING;
-            struct virtio_gpu_resource_detach_backing *resource_detach_backing = (struct virtio_gpu_resource_detach_backing *)VIRTIO_DATA(desc_head_idx);
+            struct virtio_gpu_resource_detach_backing *resource_detach_backing =
+                (struct virtio_gpu_resource_detach_backing *)VIRTIO_DATA(desc_head_idx);
             virtq.desc[desc_head_idx].len = sizeof(struct virtio_gpu_resource_detach_backing);
             resource_detach_backing->hdr.type = VIRTIO_GPU_CMD_RESOURCE_DETACH_BACKING;
             resource_detach_backing->hdr.flags = VIRTIO_GPU_FLAG_FENCE;
@@ -657,7 +682,8 @@ static void handle_request()
         }
         case GPU_REQ_TRANSFER_TO_2D: {
             reqsbk[req.id].virtio_code = VIRTIO_GPU_CMD_TRANSFER_TO_HOST_2D;
-            struct virtio_gpu_transfer_to_host_2d *transfer_to_2d = (struct virtio_gpu_transfer_to_host_2d *)VIRTIO_DATA(desc_head_idx);
+            struct virtio_gpu_transfer_to_host_2d *transfer_to_2d =
+                (struct virtio_gpu_transfer_to_host_2d *)VIRTIO_DATA(desc_head_idx);
             virtq.desc[desc_head_idx].len = sizeof(struct virtio_gpu_transfer_to_host_2d);
             transfer_to_2d->hdr.type = VIRTIO_GPU_CMD_TRANSFER_TO_HOST_2D;
             transfer_to_2d->hdr.flags = VIRTIO_GPU_FLAG_FENCE;
@@ -677,7 +703,8 @@ static void handle_request()
         }
         case GPU_REQ_RESOURCE_FLUSH: {
             reqsbk[req.id].virtio_code = VIRTIO_GPU_CMD_RESOURCE_FLUSH;
-            struct virtio_gpu_resource_flush *resource_flush = (struct virtio_gpu_resource_flush *)VIRTIO_DATA(desc_head_idx);
+            struct virtio_gpu_resource_flush *resource_flush = (struct virtio_gpu_resource_flush *)VIRTIO_DATA(
+                                                                   desc_head_idx);
             virtq.desc[desc_head_idx].len = sizeof(struct virtio_gpu_resource_flush);
             resource_flush->hdr.type = VIRTIO_GPU_CMD_RESOURCE_FLUSH;
             resource_flush->hdr.flags = VIRTIO_GPU_FLAG_FENCE;
@@ -713,7 +740,9 @@ static void handle_request()
                 continue;
             }
 
-            err = gpu_enqueue_resp(&gpu_queue_h, (gpu_resp_t){req.id, GPU_RESP_ERR_UNSPEC});
+            err = gpu_enqueue_resp(&gpu_queue_h, (gpu_resp_t) {
+                req.id, GPU_RESP_ERR_UNSPEC
+            });
             assert(!err);
             sddf_notify = true;
             break;
@@ -741,7 +770,7 @@ static void handle_irq()
         notify = handle_response();
         regs->InterruptACK = VIRTIO_MMIO_IRQ_VQUEUE;
         /* Now that there are (maybe) some free descriptors, we want to handle any remaining
-         * requests that we may have left in the queue before due to being 
+         * requests that we may have left in the queue before due to being
          * out of free descriptors.
          */
         handle_request();
@@ -762,6 +791,8 @@ static void handle_irq()
     if (notify) {
         microkit_notify(VIRT_CH);
     } else {
-        LOG_GPU_VIRTIO_DRIVER_ERR("Received interrupt but is neither a used buffer notification nor a gpu event, irq status: 0x%x\n", irq_status);
+        LOG_GPU_VIRTIO_DRIVER_ERR("Received interrupt but is neither a used buffer notification nor "
+                                  "a gpu event, irq status: 0x%x\n",
+                                  irq_status);
     }
 }

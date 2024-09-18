@@ -1,3 +1,8 @@
+/*
+ * Copyright 2024, UNSW
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
+
 #pragma once
 
 #include <stddef.h>
@@ -49,7 +54,7 @@ static inline gpu_resp_queue_t *gpu_virt_cli_resp_queue(gpu_resp_queue_t *resp, 
     switch (id) {
     case 0:
         return resp;
-    default: 
+    default:
         return NULL;
     }
 }

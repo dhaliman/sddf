@@ -8,23 +8,14 @@ ifeq ($(strip $(MICROKIT_SDK)),)
 $(error MICROKIT_SDK must be specified)
 endif
 
-ifeq ($(strip $(MICROKIT_BOARD)),)
-$(error MICROKIT_BOARD must be specified)
-endif
-
+BUILD_DIR ?= build
 FB_IMG ?= fb_img.jpeg
 
-ifeq ($(wildcard $(FB_IMG)),)
-$(error FB_IMG file ${FB_IMG} does not exist)
-endif
-
-BUILD_DIR ?= build
-
-override BUILD_DIR := $(abspath ${BUILD_DIR})
 override FB_IMG := $(abspath ${FB_IMG})
+override BUILD_DIR := $(abspath ${BUILD_DIR})
 override MICROKIT_SDK := $(abspath ${MICROKIT_SDK})
 
-export MICROKIT_BOARD
+export MICROKIT_BOARD ?= qemu_virt_aarch64
 export MICROKIT_CONFIG ?= debug
 export SDDF := $(abspath ../..)
 

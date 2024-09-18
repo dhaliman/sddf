@@ -27,10 +27,10 @@ typedef enum gpu_req_code {
     /* Attach a contiguous memory backing to resource */
     GPU_REQ_RESOURCE_ATTACH_BACKING,
     /* Detach a memory backing from resource */
-    GPU_REQ_RESOURCE_DETACH_BACKING,  
+    GPU_REQ_RESOURCE_DETACH_BACKING,
     /* For regular 2D resources with private memory, transfer data from memory backing to resource private memory */
     GPU_REQ_TRANSFER_TO_2D,
-    /* Flushes memory of a resource from device to scanout */  
+    /* Flushes memory of a resource from device to scanout */
     GPU_REQ_RESOURCE_FLUSH,
     /* Destroy resource in device */
     GPU_REQ_RESOURCE_UNREF,
@@ -103,9 +103,7 @@ typedef struct gpu_queue_handle {
  * @param response pointer to response queue in shared memory.
  * @param capacity number of entries in the req and resp queues.
  */
-static inline void gpu_queue_init(gpu_queue_handle_t *h,
-                                  gpu_req_queue_t *request,
-                                  gpu_resp_queue_t *response,
+static inline void gpu_queue_init(gpu_queue_handle_t *h, gpu_req_queue_t *request, gpu_resp_queue_t *response,
                                   uint32_t capacity)
 {
     h->req_queue = request;
