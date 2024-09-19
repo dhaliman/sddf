@@ -53,14 +53,9 @@ pub fn build(b: *std.Build) void {
     const microkit_config = @tagName(microkit_config_option);
 
     // Get the Microkit SDK board we want to target
-    const microkit_board_option = b.option(MicrokitBoard, "board", "Microkit board to target");
-
-    if (microkit_board_option == null) {
-        std.log.err("Missing -Dboard=<BOARD> argument being passed\n", .{});
-        std.posix.exit(1);
-    }
-    const target = b.resolveTargetQuery(findTarget(microkit_board_option.?));
-    const microkit_board = @tagName(microkit_board_option.?);
+    const microkit_board_option = b.option(MicrokitBoard, "board", "Microkit board to target") orelse MicrokitBoard.qemu_virt_aarch64;
+    const target = b.resolveTargetQuery(findTarget(microkit_board_option));
+    const microkit_board = @tagName(microkit_board_option);
 
     const microkit_board_dir = b.fmt("{s}/board/{s}/{s}", .{ microkit_sdk, microkit_board, microkit_config });
     const microkit_tool = b.fmt("{s}/bin/microkit", .{microkit_sdk});
@@ -77,11 +72,11 @@ pub fn build(b: *std.Build) void {
         .gpu_config_include = @as([]const u8, "include"),
     });
 
-    const gpu_driver_class = switch (microkit_board_option.?) {
+    const gpu_driver_class = switch (microkit_board_option) {
         .qemu_virt_aarch64 => "virtio",
     };
     
-    const timer_driver_class = switch (microkit_board_option.?) {
+    const timer_driver_class = switch (microkit_board_option) {
         .qemu_virt_aarch64 => "arm",
     };
 
@@ -162,13 +157,15 @@ pub fn build(b: *std.Build) void {
     const loader_arg = b.fmt("loader,file={s},addr=0x70000000,cpu-num=0", .{ final_image_dest });
     if (std.mem.eql(u8, microkit_board, "qemu_virt_aarch64")) {
         const qemu_cmd = b.addSystemCommand(&[_][]const u8{
+            "sudo",
             "qemu-system-aarch64",
-            "-machine", "virt,virtualization=on",
+            "-machine", "virt,virtualization=on,memory-backend=main-mem",
             "-cpu", "cortex-a53",
             "-serial", "mon:stdio",
             "-device", loader_arg,
             "-m", "size=2G",
-            "-device", "virtio-gpu-device",
+            "-object", "memory-backend-memfd,id=main-mem,size=2G",
+            "-device", "virtio-gpu-device,edid=off,blob=on,max_outputs=1,indirect_desc=off,event_idx=off",
             "-global", "virtio-mmio.force-legacy=false",
             "-d", "guest_errors",
             // "--trace", "enable=virtio*",
