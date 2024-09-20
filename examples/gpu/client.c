@@ -79,8 +79,7 @@ static void draw_image_blob(int resource_id, int res_width, int res_height, gpu_
         .resource_create_blob = {
             .resource_id = resource_id,
             .mem_offset = DISPLAY_INFO_DATA_OFFSET,
-            /* Page alignment needed qemu blob udmabuf, qemu will let the request succeed and leave only a warning (???) */
-            .mem_size = ALIGN(res_width *res_height * GPU_BPP_2D, 4096),
+            .mem_size = res_width * res_height * GPU_BPP_2D,
         },
     });
     assert(!err);

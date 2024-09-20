@@ -512,9 +512,11 @@ static void handle_request()
             resource_create_blob->hdr.flags = VIRTIO_GPU_FLAG_FENCE;
             resource_create_blob->hdr.fence_id = 0;
             resource_create_blob->resource_id = req.resource_create_blob.resource_id;
-            /* Type of blob resource memory: Guest only, Guest + Host, Host only */
+            /* Type of blob resource memory: Guest only, Guest + Host, Host only. We use guest only */
             resource_create_blob->blob_mem = VIRTIO_GPU_BLOB_MEM_GUEST;
-            /* Resource use purpose: memory access, sharing with driver instances, or sharing with other devices */
+            /* Resource use purpose: memory access, sharing with driver instances, or sharing with other devices.
+             * We use it for memory access purposes.
+             */
             resource_create_blob->blob_flags = VIRTIO_GPU_BLOB_FLAG_USE_MAPPABLE;
             /* Rendering context id, unused in 2d */
             resource_create_blob->blob_id = 0;
@@ -523,7 +525,9 @@ static void handle_request()
             } else {
                 resource_create_blob->nr_entries = 0;
             }
-            resource_create_blob->size = (uint64_t)req.resource_create_blob.mem_size;
+            /* Page alignment needed by qemu blob udmabuf, it will let the request succeed and leave only a warning (???) */
+            uint32_t memsize = ALIGN(req.resource_create_blob.mem_size, 4096);
+            resource_create_blob->size = (uint64_t)ALIGN(req.resource_create_blob.mem_size, 4096);
 
             uint32_t desc_body_idx = 0;
             err = ialloc_alloc(&ialloc_desc, &desc_body_idx);
@@ -538,7 +542,7 @@ static void handle_request()
 
             struct virtio_gpu_mem_entry *mem_entry = (struct virtio_gpu_mem_entry *)VIRTIO_DATA(desc_body_idx);
             mem_entry->addr = req.resource_create_blob.mem_offset + gpu_client_data_paddr;
-            mem_entry->length = req.resource_create_blob.mem_size;
+            mem_entry->length = memsize;
 
             virtq.desc[desc_body_idx].next = desc_footer_idx;
             virtq.desc[desc_body_idx].flags = VIRTQ_DESC_F_NEXT;
