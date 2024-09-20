@@ -49,20 +49,20 @@ static void bench_core_config_info(char *pd_name, core_config_t *core_config)
     core_config->max_core_id = 0;
     core_config->last_core = false;
 
-    if (sddf_strcmp(pd_name, "bench0")) {
+    if (!sddf_strcmp(pd_name, "bench0")) {
         core_config->core_value = 0;
-    } else if (sddf_strcmp(pd_name, "bench1")) {
+    } else if (!sddf_strcmp(pd_name, "bench1")) {
         core_config->core_value = 1;
-    } else if (sddf_strcmp(pd_name, "bench2")) {
+    } else if (!sddf_strcmp(pd_name, "bench2")) {
         core_config->core_value = 2;
-    } else if (sddf_strcmp(pd_name, "bench3")) {
+    } else if (!sddf_strcmp(pd_name, "bench3")) {
         core_config->core_value = 3;
     } else {
         return;
     }
     
     if (core_config->core_value == LAST_CORE) {
-        core_config->core_value = true;
+        core_config->last_core = true;
     }
 
     for (uint16_t i = 0; i < NUM_PDS_TO_TRACK; i++) {

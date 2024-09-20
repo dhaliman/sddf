@@ -71,7 +71,7 @@ event_id_t benchmarking_events[] = {
 static void benchmark_start_core()
 {
     seL4_BenchmarkResetThreadUtilisation(TCB_CAP);
-    for (uint32_t id = 1; id < core_config.max_core_id; id++) {
+    for (uint32_t id = 1; id < core_config.max_core_id + 1; id++) {
         if (core_config.core_bitmap & (1 << id)) {
             seL4_BenchmarkResetThreadUtilisation(BASE_TCB_CAP + id);
         }
@@ -107,7 +107,7 @@ static void benchmark_stop_core()
     seL4_BenchmarkGetThreadUtilisation(TCB_CAP);
     benchmark_print_IPC_data((uint64_t *)&seL4_GetIPCBuffer()->msg[0], TOTAL_ID);
     
-    for (uint32_t id = 1; id < core_config.max_core_id; id++) {
+    for (uint32_t id = 1; id < core_config.max_core_id + 1; id++) {
         if (core_config.core_bitmap & (1 << id)) {
             seL4_BenchmarkGetThreadUtilisation(BASE_TCB_CAP + id);
             benchmark_print_IPC_data((uint64_t *)&seL4_GetIPCBuffer()->msg[0], id);
@@ -196,7 +196,7 @@ void notified(microkit_channel ch)
 #endif
 
 #ifdef CONFIG_BENCHMARK_TRACK_UTILISATION
-        benchmark_stop_core()
+        benchmark_stop_core();
 #endif
 
 #ifdef CONFIG_BENCHMARK_TRACK_KERNEL_ENTRIES
