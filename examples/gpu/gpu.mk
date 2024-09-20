@@ -28,6 +28,10 @@ ifeq ($(strip ${BLOB}),)
 $(error BLOB must be specified)
 endif
 
+ifeq (, $(shell which convert))
+$(error "convert is not available. Please install imagemagick")
+endif
+
 ifeq ($(strip ${MICROKIT_BOARD}), qemu_virt_aarch64)
 	TIMER_DRIVER_DIR := arm
 	GPU_DRIVER_DIR := virtio
@@ -75,8 +79,10 @@ CFLAGS := -mcpu=${CPU} \
 		  -I${BOARD_DIR}/include \
 		  -I${SDDF}/include \
 		  -I${PROJECT_INCLUDE}
-ifeq (${BLOB}, 1)
-CFLAGS += -DGPU_BLOB_SUPPORT
+ifneq ($(strip ${BLOB}), 0)
+CFLAGS_gpu := -DGPU_BLOB_SUPPORT
+else
+CFLAGS_gpu :=
 endif
 LDFLAGS := -L${BOARD_DIR}/lib
 LIBS := --start-group -lmicrokit -Tmicrokit.ld libsddf_util_debug.a --end-group
@@ -90,17 +96,7 @@ GPU_COMPONENTS := ${SDDF}/gpu/components
 TIMER_DRIVER := ${SDDF}/drivers/timer/${TIMER_DRIVER_DIR}
 
 QEMU := qemu-system-aarch64
-ifeq (${BLOB}, 0)
-QEMU_CMD := ${QEMU} -machine virt,virtualization=on \
-			-cpu ${CPU} \
-			-serial mon:stdio \
-			-device loader,file=${IMAGE_FILE},addr=0x70000000,cpu-num=0 \
-			-m size=2G \
-			-device virtio-gpu-device,edid=off,blob=off,max_outputs=1,indirect_desc=off,event_idx=off \
-			-global virtio-mmio.force-legacy=false \
-			-d guest_errors
-			# -trace enable=virtio*
-else
+ifneq ($(strip ${BLOB}), 0)
 QEMU_CMD := sudo ${QEMU} -machine virt,virtualization=on,memory-backend=main-mem \
 			-cpu ${CPU} \
 			-serial mon:stdio \
@@ -108,6 +104,16 @@ QEMU_CMD := sudo ${QEMU} -machine virt,virtualization=on,memory-backend=main-mem
 			-m size=2G \
 			-object memory-backend-memfd,id=main-mem,size=2G \
 			-device virtio-gpu-device,edid=off,blob=on,max_outputs=1,indirect_desc=off,event_idx=off \
+			-global virtio-mmio.force-legacy=false \
+			-d guest_errors
+			# -trace enable=virtio*
+else
+QEMU_CMD := ${QEMU} -machine virt,virtualization=on \
+			-cpu ${CPU} \
+			-serial mon:stdio \
+			-device loader,file=${IMAGE_FILE},addr=0x70000000,cpu-num=0 \
+			-m size=2G \
+			-device virtio-gpu-device,edid=off,blob=off,max_outputs=1,indirect_desc=off,event_idx=off \
 			-global virtio-mmio.force-legacy=false \
 			-d guest_errors
 			# -trace enable=virtio*
@@ -122,17 +128,23 @@ include ${TIMER_DRIVER}/timer_driver.mk
 
 ${IMAGES}: libsddf_util_debug.a
 
+CHECK_GPU_CLI_FLAGS_MD5:=.gpu_cli_cflags-$(shell echo -- ${CFLAGS} ${CFLAGS_gpu} | shasum | sed 's/ *-//')
+
+${CHECK_GPU_CLI_FLAGS_MD5}:
+	-rm -f .gpu_cli_cflags-*
+	touch $@
+
 fb_img.bgra: ${FB_IMG}
 	convert -auto-orient -depth 8 -size $(shell convert $< -print "%wx%h" /dev/null) $< bgra:$@
 
-client.o: ${TOP}/client.c ${FB_IMG}
-	$(CC) -c $(CFLAGS) \
-		-DFB_IMG_WIDTH=$(shell convert $(word $(words $^),$^) -auto-orient -print "%w" /dev/null) \
-		-DFB_IMG_HEIGHT=$(shell convert $(word $(words $^),$^) -auto-orient -print "%h" /dev/null) \
+client.o: ${TOP}/client.c ${FB_IMG} ${CHECK_GPU_CLI_FLAGS_MD5}
+	${CC} -c ${CFLAGS} ${CFLAGS_gpu} \
+		-DFB_IMG_WIDTH=$(shell convert ${FB_IMG} -auto-orient -print "%w" /dev/null) \
+		-DFB_IMG_HEIGHT=$(shell convert ${FB_IMG} -auto-orient -print "%h" /dev/null) \
 		$< -o $@
 
 fb_img.o: ${TOP}/fb_img.S fb_img.bgra
-	${CC} -c -DFB_IMG_PATH=\"$(word $(words $^),$^)\" $< -o $@
+	${CC} -c -DFB_IMG_PATH=\"fb_img.bgra\" $< -o $@
 
 client.elf: client.o fb_img.o
 	${LD} ${LDFLAGS} $^ ${LIBS} -o $@

@@ -12,12 +12,6 @@ gpu requests and the most common state transitions that can occur.
 The following platforms are supported:
 * qemu_virt_aarch64
 
-Note that this example depends on `imagemagick`.
-
-For `apt` users: `sudo apt-get install imagemagick`.
-
-For Homebrew users: `brew install imagemagick`.
-
 ### Make
 
 ```sh
@@ -34,6 +28,12 @@ You can enable blob resources by specifying `BLOB=1`. It is off by default.
 
 You can optionally provide `FB_IMG=<path/to/your/image>` to scanout your own image to the display.
 Otherwise the default image `fb_img.jpeg` is used.
+
+Note that when building on Make this example requires `imagemagick`.
+
+For `apt` users: `sudo apt-get install imagemagick`.
+
+For Homebrew users: `brew install imagemagick`.
 
 ### Zig
 

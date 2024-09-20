@@ -14,16 +14,18 @@
 
 GPU_DRIVER_DIR := $(dir $(lastword $(MAKEFILE_LIST)))
 
-CHECK_GPUDRV_FLAGS_MD5:=.gpudrv_cflags-$(shell echo -- ${CFLAGS} ${CFLAGS_gpu} | shasum | sed 's/ *-//')
+CFLAGS_gpu ?=
 
-${CHECK_GPUDRV_FLAGS_MD5}:
-	-rm -f .gpudrv_cflags-*
+CHECK_GPU_DRV_FLAGS_MD5:=.gpu_drv_cflags-$(shell echo -- ${CFLAGS} ${CFLAGS_gpu} | shasum | sed 's/ *-//')
+
+${CHECK_GPU_DRV_FLAGS_MD5}:
+	-rm -f .gpu_drv_cflags-*
 	touch $@
 
 gpu_driver.elf: gpu/virtio/gpu_driver.o
 	$(LD) $(LDFLAGS) $< $(LIBS) -o $@
 
-gpu/virtio/gpu_driver.o: ${GPU_DRIVER_DIR}gpu.c ${CHECK_GPUDRV_FLAGS}
+gpu/virtio/gpu_driver.o: ${GPU_DRIVER_DIR}gpu.c ${CHECK_GPU_DRV_FLAGS_MD5}
 	mkdir -p gpu/virtio
 	${CC} -c ${CFLAGS} ${CFLAGS_gpu} -I ${GPU_DRIVER_DIR} -o $@ $<
 
