@@ -4,20 +4,21 @@
 # SPDX-License-Identifier: BSD-2-Clause
 #
 
-ifeq ($(strip $(MICROKIT_SDK)),)
+ifeq ($(strip ${MICROKIT_SDK}),)
 $(error MICROKIT_SDK must be specified)
 endif
 
-BUILD_DIR ?= build
-FB_IMG ?= fb_img.jpeg
+export FB_IMG ?= fb_img.jpeg
+export BLOB ?= 0 
+export BUILD_DIR ?= build
+export MICROKIT_SDK
+export MICROKIT_BOARD ?= qemu_virt_aarch64
+export MICROKIT_CONFIG ?= debug
+export SDDF := $(abspath ../..)
 
 override FB_IMG := $(abspath ${FB_IMG})
 override BUILD_DIR := $(abspath ${BUILD_DIR})
 override MICROKIT_SDK := $(abspath ${MICROKIT_SDK})
-
-export MICROKIT_BOARD ?= qemu_virt_aarch64
-export MICROKIT_CONFIG ?= debug
-export SDDF := $(abspath ../..)
 
 IMAGE_FILE:= ${BUILD_DIR}/loader.img
 REPORT_FILE:= ${BUILD_DIR}/report.txt

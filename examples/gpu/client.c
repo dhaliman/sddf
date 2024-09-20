@@ -58,9 +58,11 @@ enum draw_state {
     DRAW_FULL,
     DRAW_QUADRANT,
     DRAW_DISABLE,
+#ifdef GPU_BLOB_SUPPORT
     DRAW_FULL_BLOB,
     DRAW_QUADRANT_BLOB,
     DRAW_DISABLE_BLOB,
+#endif
 } draw_state = DRAW_FULL;
 
 static int get_and_inc_req_id(void)
@@ -70,6 +72,7 @@ static int get_and_inc_req_id(void)
     return ret;
 }
 
+#ifdef GPU_BLOB_SUPPORT
 static void draw_image_blob(int resource_id, int res_width, int res_height, gpu_rect_t rect)
 {
     int err = 0;
@@ -125,6 +128,7 @@ static void draw_image_blob(int resource_id, int res_width, int res_height, gpu_
                    rect.height, 0, GPU_FORMAT_B8G8R8A8_UNORM, res_width, res_height, 0, res_width * GPU_BPP_2D, rect.x,
                    rect.y, rect.width, rect.height);
 }
+#endif
 
 static void draw_image(int resource_id, int res_width, int res_height, int xfer_offset, gpu_rect_t rect)
 {
@@ -310,9 +314,14 @@ static void do_draw_state(void)
          */
         cleanup_resources(1, 2);
         sddf_timer_set_timeout(TIMER_CH, NS_IN_S);
+#ifdef GPU_BLOB_SUPPORT
         draw_state = DRAW_FULL_BLOB;
+#else
+        draw_state = DRAW_FULL;
+#endif
         microkit_notify(VIRT_CH);
         break;
+#ifdef GPU_BLOB_SUPPORT
     case DRAW_FULL_BLOB:
         /* This will make the following requests:
          * 1. Create a blob resource with the image width and height
@@ -356,6 +365,7 @@ static void do_draw_state(void)
         draw_state = DRAW_FULL;
         microkit_notify(VIRT_CH);
         break;
+#endif
     }
 }
 

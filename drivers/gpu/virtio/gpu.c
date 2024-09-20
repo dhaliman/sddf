@@ -190,18 +190,24 @@ static void virtio_gpu_init(void)
 #endif
 
     /* Select features we want from the device.
-     * We require blob resources for zero copy, and virtIO version 1
+     * We require blob resources for zero copy if enabled, and virtIO version 1
      * as we are following the non-legacy virtIO 1.2 specification.
      */
+#ifdef GPU_BLOB_SUPPORT
     if (!(dev_features_low & BIT_LOW(VIRTIO_GPU_F_RESOURCE_BLOB))) {
         LOG_GPU_VIRTIO_DRIVER_ERR("Device does not support blob resources!\n");
         assert(false);
     }
+#endif
     if (!(dev_features_high & BIT_HIGH(VIRTIO_F_VERSION_1))) {
         LOG_GPU_VIRTIO_DRIVER_ERR("Device does not support virtIO version 1!\n");
         assert(false);
     }
+#ifdef GPU_BLOB_SUPPORT
     uint32_t drv_features_low = BIT_LOW(VIRTIO_GPU_F_RESOURCE_BLOB);
+#else
+    uint32_t drv_features_low = 0;
+#endif
     uint32_t drv_features_high = BIT_HIGH(VIRTIO_F_VERSION_1);
     regs->DriverFeatures = drv_features_low;
     regs->DriverFeaturesSel = 1;
@@ -346,6 +352,7 @@ static bool handle_response()
             resp_display_info_sddf->num_scanouts = num_scanouts;
             break;
         }
+#ifdef GPU_BLOB_SUPPORT
         case VIRTIO_GPU_CMD_RESOURCE_CREATE_BLOB: {
             struct virtq_desc desc_body = virtq.desc[desc_head.next];
             assert(desc_body.flags & VIRTQ_DESC_F_NEXT);
@@ -366,6 +373,7 @@ static bool handle_response()
             assert(!err);
             break;
         }
+#endif
         case VIRTIO_GPU_CMD_RESOURCE_ATTACH_BACKING: {
             struct virtq_desc desc_body = virtq.desc[desc_head.next];
             assert(desc_body.flags & VIRTQ_DESC_F_NEXT);
@@ -388,8 +396,10 @@ static bool handle_response()
         }
         case VIRTIO_GPU_CMD_RESOURCE_CREATE_2D:
         /* FALLTHROUGH */
+#ifdef GPU_BLOB_SUPPORT
         case VIRTIO_GPU_CMD_SET_SCANOUT_BLOB:
         /* FALLTHROUGH */
+#endif
         case VIRTIO_GPU_CMD_RESOURCE_UNREF:
         /* FALLTHROUGH */
         case VIRTIO_GPU_CMD_RESOURCE_DETACH_BACKING:
@@ -503,6 +513,7 @@ static void handle_request()
             reqsbk[req.id].mem_offset = req.get_display_info.mem_offset;
             break;
         }
+#ifdef GPU_BLOB_SUPPORT
         case GPU_REQ_RESOURCE_CREATE_BLOB: {
             reqsbk[req.id].virtio_code = VIRTIO_GPU_CMD_RESOURCE_CREATE_BLOB;
             struct virtio_gpu_resource_create_blob *resource_create_blob =
@@ -524,7 +535,7 @@ static void handle_request()
                 resource_create_blob->nr_entries = 1;
                 /* Page alignment needed by qemu blob udmabuf, it will let the request succeed and leave only a warning (???) */
                 uint32_t memsize = ALIGN(req.resource_create_blob.mem_size, 4096);
-                resource_create_blob->size = (uint64_t)ALIGN(req.resource_create_blob.mem_size, 4096);
+                resource_create_blob->size = memsize;
 
                 uint32_t desc_body_idx = 0;
                 err = ialloc_alloc(&ialloc_desc, &desc_body_idx);
@@ -582,6 +593,7 @@ static void handle_request()
             virtq.desc[desc_footer_idx].len = sizeof(struct virtio_gpu_ctrl_hdr);
             break;
         }
+#endif
         case GPU_REQ_RESOURCE_CREATE_2D: {
             reqsbk[req.id].virtio_code = VIRTIO_GPU_CMD_RESOURCE_CREATE_2D;
             struct virtio_gpu_resource_create_2d *resource_create_2d =

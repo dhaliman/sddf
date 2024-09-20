@@ -62,9 +62,9 @@ static uint32_t res_ialloc_idxlist[GPU_MAX_RESOURCES];
 
 typedef struct resource {
     bool has_backing;
-    bool is_blob;
     uint32_t width;
     uint32_t height;
+    bool is_blob;
     uint64_t mem_offset;
     uint32_t mem_size;
 } resource_t;
@@ -193,6 +193,7 @@ static inline bool rect_overlaps(uint32_t width, uint32_t height, gpu_rect_t rec
     return rect.x + rect.width <= width && rect.y + rect.height <= height;
 }
 
+#ifdef GPU_BLOB_SUPPORT
 static inline bool gpu_resource_create_blob(int cli_id, gpu_req_t *req, gpu_req_t *drv_req, gpu_resp_t *fail_resp)
 {
     if (req->resource_create_blob.resource_id == GPU_DISABLE_SCANOUT_RESOURCE_ID) {
@@ -311,6 +312,7 @@ static inline bool gpu_set_scanout_blob(int cli_id, gpu_req_t *req, gpu_req_t *d
     drv_req->set_scanout_blob.height = req->set_scanout_blob.height;
     return true;
 }
+#endif
 
 static inline bool gpu_resource_create_2d(int cli_id, gpu_req_t *req, gpu_req_t *drv_req, gpu_resp_t *fail_resp)
 {
@@ -681,6 +683,7 @@ static bool handle_client(int cli_id)
 
         bool success = false;
         switch (req.code) {
+#ifdef GPU_BLOB_SUPPORT
         case GPU_REQ_RESOURCE_CREATE_BLOB: {
             success = gpu_resource_create_blob(cli_id, &req, &drv_req, &fail_resp);
             break;
@@ -689,6 +692,7 @@ static bool handle_client(int cli_id)
             success = gpu_set_scanout_blob(cli_id, &req, &drv_req, &fail_resp);
             break;
         }
+#endif
         case GPU_REQ_RESOURCE_CREATE_2D: {
             success = gpu_resource_create_2d(cli_id, &req, &drv_req, &fail_resp);
             break;
@@ -842,6 +846,7 @@ static void handle_driver()
         };
 
         switch (reqbk->code) {
+#ifdef GPU_BLOB_SUPPORT
         case GPU_REQ_RESOURCE_CREATE_BLOB: {
             if (resp.status != GPU_RESP_OK) {
                 LOG_GPU_VIRT("Resource create blob response failed\n");
@@ -856,6 +861,7 @@ static void handle_driver()
             }
             break;
         }
+#endif
         case GPU_REQ_RESOURCE_CREATE_2D: {
             if (resp.status != GPU_RESP_OK) {
                 LOG_GPU_VIRT("Resource create 2d response failed\n");
@@ -880,11 +886,13 @@ static void handle_driver()
                 LOG_GPU_VIRT("Detach backing response failed\n");
             }
             break;
+#ifdef GPU_BLOB_SUPPORT
         case GPU_REQ_SET_SCANOUT_BLOB:
             if (resp.status != GPU_RESP_OK) {
                 LOG_GPU_VIRT("Set scanout blob response failed\n");
             }
             break;
+#endif
         case GPU_REQ_SET_SCANOUT:
             if (resp.status != GPU_RESP_OK) {
                 LOG_GPU_VIRT("Set scanout response failed\n");

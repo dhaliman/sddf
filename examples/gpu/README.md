@@ -18,14 +18,6 @@ For `apt` users: `sudo apt-get install imagemagick`.
 
 For Homebrew users: `brew install imagemagick`.
 
-### Simulating on QEMU only on Linux machines
-This example supports simulating with QEMU only Linux machines as it requires the
-'udmabuf' framework. This is a requirement in order to enable virtio-gpu blob resources.
-Additionally, sudo permissions is required to access the `udmabuf` framework.
-
-This example also requires you to have a compatible GUI installed for QEMU.
-Make sure QEMU's default display is not set to `-display none`.
-
 ### Make
 
 ```sh
@@ -38,7 +30,10 @@ After building, the system image to load will be `build/loader.img`.
 
 If you wish to simulate on the QEMU virt AArch64 platform, you can append `qemu` to your make command.
 
+You can enable blob resources by specifying `BLOB=1`. It is off by default.
+
 You can optionally provide `FB_IMG=<path/to/your/image>` to scanout your own image to the display.
+Otherwise the default image `fb_img.jpeg` is used.
 
 ### Zig
 
@@ -56,7 +51,17 @@ You can simulate QEMU with:
 zig build -Dsdk=/path/to/sdk -Dboard=qemu_virt_aarch64 qemu
 ```
 
+You cannot specify your own `FB_IMG` image when building with zig. The default
+image `fb_img.jpeg` is used.
+
+You cannot enable blob resources when building with zig. It is off by default.
+
 The final bootable image will be in `zig-out/bin/loader.img`.
+
+### Simulating on QEMU with blob resources
+This example only supports simulating on QEMU with blob resources enabled on Linux machines
+as it requires the 'udmabuf' framework. This is a requirement in order to enable virtio-gpu
+blob resources. Additionally, sudo permissions is required for QEMU to access `/dev/udmabuf`.
 
 ## Running
 
