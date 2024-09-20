@@ -522,31 +522,33 @@ static void handle_request()
             resource_create_blob->blob_id = 0;
             if (req.resource_create_blob.mem_size > 0) {
                 resource_create_blob->nr_entries = 1;
+                /* Page alignment needed by qemu blob udmabuf, it will let the request succeed and leave only a warning (???) */
+                uint32_t memsize = ALIGN(req.resource_create_blob.mem_size, 4096);
+                resource_create_blob->size = (uint64_t)ALIGN(req.resource_create_blob.mem_size, 4096);
+
+                uint32_t desc_body_idx = 0;
+                err = ialloc_alloc(&ialloc_desc, &desc_body_idx);
+                assert(!err);
+                assert(desc_body_idx < VIRTQ_QUEUE_SIZE);
+
+                virtq.desc[desc_head_idx].next = desc_body_idx;
+                virtq.desc[desc_head_idx].flags = VIRTQ_DESC_F_NEXT;
+
+                virtq.desc[desc_body_idx].addr = (uint64_t)VIRTIO_DATA_PADDR(desc_body_idx);
+                virtq.desc[desc_body_idx].len = sizeof(struct virtio_gpu_mem_entry);
+
+                struct virtio_gpu_mem_entry *mem_entry = (struct virtio_gpu_mem_entry *)VIRTIO_DATA(desc_body_idx);
+                mem_entry->addr = req.resource_create_blob.mem_offset + gpu_client_data_paddr;
+                mem_entry->length = memsize;
+
+                virtq.desc[desc_body_idx].next = desc_footer_idx;
+                virtq.desc[desc_body_idx].flags = VIRTQ_DESC_F_NEXT;
             } else {
                 resource_create_blob->nr_entries = 0;
+                resource_create_blob->size = 0;
+                virtq.desc[desc_head_idx].next = desc_footer_idx;
+                virtq.desc[desc_head_idx].flags = VIRTQ_DESC_F_NEXT;   
             }
-            /* Page alignment needed by qemu blob udmabuf, it will let the request succeed and leave only a warning (???) */
-            uint32_t memsize = ALIGN(req.resource_create_blob.mem_size, 4096);
-            resource_create_blob->size = (uint64_t)ALIGN(req.resource_create_blob.mem_size, 4096);
-
-            uint32_t desc_body_idx = 0;
-            err = ialloc_alloc(&ialloc_desc, &desc_body_idx);
-            assert(!err);
-            assert(desc_body_idx < VIRTQ_QUEUE_SIZE);
-
-            virtq.desc[desc_head_idx].next = desc_body_idx;
-            virtq.desc[desc_head_idx].flags = VIRTQ_DESC_F_NEXT;
-
-            virtq.desc[desc_body_idx].addr = (uint64_t)VIRTIO_DATA_PADDR(desc_body_idx);
-            virtq.desc[desc_body_idx].len = sizeof(struct virtio_gpu_mem_entry);
-
-            struct virtio_gpu_mem_entry *mem_entry = (struct virtio_gpu_mem_entry *)VIRTIO_DATA(desc_body_idx);
-            mem_entry->addr = req.resource_create_blob.mem_offset + gpu_client_data_paddr;
-            mem_entry->length = memsize;
-
-            virtq.desc[desc_body_idx].next = desc_footer_idx;
-            virtq.desc[desc_body_idx].flags = VIRTQ_DESC_F_NEXT;
-
             virtq.desc[desc_footer_idx].len = sizeof(struct virtio_gpu_ctrl_hdr);
             break;
         }
