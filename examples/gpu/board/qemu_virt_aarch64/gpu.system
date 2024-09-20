@@ -19,7 +19,7 @@
     <memory_region name="gpu_client_resp_queue" size="0x200_000" page_size="0x200_000" />
     <memory_region name="gpu_client_data" size="0x200_000" page_size="0x200_000" />
 
-    <protection_domain name="gpu_driver" priority="254">
+    <protection_domain name="gpu_driver" priority="254" stack_size="0x10000">
         <program_image path="gpu_driver.elf" />
         <map mr="virtio_regs" vaddr="0x2_000_000" perms="rw" cached="false" setvar_vaddr="virtio_regs" />
         <map mr="virtio_metadata" vaddr="0x60_000_000" perms="rw" cached="false" setvar_vaddr="virtio_metadata" />
@@ -40,7 +40,7 @@
         <irq irq="30" id="0" />
     </protection_domain>
 
-    <protection_domain name="gpu_virt" priority="99">
+    <protection_domain name="gpu_virt" priority="99" stack_size="0x10000">
         <program_image path="gpu_virt.elf" />
         <map mr="gpu_driver_events" vaddr="0x40000000" perms="rw" cached="false" setvar_vaddr="gpu_driver_events" />
         <map mr="gpu_driver_req_queue" vaddr="0x40200000" perms="rw" cached="false" setvar_vaddr="gpu_driver_req_queue" />
@@ -53,7 +53,7 @@
         <map mr="gpu_client_data" vaddr="0x30600000" perms="rw" cached="true" setvar_vaddr="gpu_client_data" />
     </protection_domain>
 
-    <protection_domain name="client" priority="1">
+    <protection_domain name="client" priority="1" stack_size="0x10000">
         <program_image path="client.elf" />
         <map mr="gpu_client_events" vaddr="0x40_000_000" perms="rw" cached="false" setvar_vaddr="gpu_events" />
         <map mr="gpu_client_req_queue" vaddr="0x40_200_000" perms="rw" cached="false" setvar_vaddr="gpu_req_queue" />
