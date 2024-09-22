@@ -11,7 +11,7 @@ BOARD_DIR := $(MICROKIT_SDK)/board/$(MICROKIT_BOARD)/$(MICROKIT_CONFIG)
 ECHO_SERVER:=$(SDDF)/examples/echo_server
 
 BENCHMARK:=$(SDDF)/benchmark
-CORE_CONFIG_INCLUDE:=$(ECHO_SERVER)/include/core_config
+CORE_CONFIG_INCLUDE:=$(ECHO_SERVER)/include/core_config$(CONFIG_INCLUDE_SMP)
 
 LWIPDIR:=network/ipstacks/lwip/src
 NETWORK_COMPONENTS:=$(SDDF)/network/components
@@ -20,7 +20,7 @@ ETHERNET_CONFIG_INCLUDE:=$(ECHO_SERVER)/include/ethernet_config
 
 SERIAL_COMPONENTS := $(SDDF)/serial/components
 UART_DRIVER := $(SDDF)/drivers/serial/$(UART_DRIV_DIR)
-SERIAL_CONFIG_INCLUDE:=$(ECHO_SERVER)/include/serial_config
+SERIAL_CONFIG_INCLUDE:=$(ECHO_SERVER)/include/serial_config$(CONFIG_INCLUDE_SMP)
 
 TIMER_DRIVER:=$(SDDF)/drivers/timer/$(TIMER_DRV_DIR)
 UTIL:=$(SDDF)/util
